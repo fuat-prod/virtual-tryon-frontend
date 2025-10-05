@@ -1,3 +1,54 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-xl border border-gray-100/50 shadow-soft;
+  }
+  
+  .gradient-border {
+    background: linear-gradient(white, white) padding-box,
+                linear-gradient(135deg, #8b5cf6, #d946ef) border-box;
+    border: 2px solid transparent;
+  }
+  
+  .btn-primary {
+    @apply bg-gradient-to-r from-violet-600 to-fuchsia-600 
+           text-white font-semibold
+           hover:from-violet-700 hover:to-fuchsia-700
+           transition-all duration-300
+           shadow-lg hover:shadow-xl hover:scale-[1.02];
+  }
+  
+  /* Smooth animations */
+  * {
+    @apply transition-colors duration-200;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent;
+  }
+  
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient 3s ease infinite;
+  }
+  
+  @keyframes gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+}
+
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}

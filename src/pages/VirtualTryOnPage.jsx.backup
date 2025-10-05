@@ -7,7 +7,7 @@ import ImageUploader from '../components/upload/ImageUploader'
 import ResultDisplay from '../components/result/ResultDisplay'
 
 const categories = [
-  { value: 'upper_body', label: 'Upper Body', icon: '👔' },
+  { value: 'upper_body', label: 'Upper Body', icon: '👚' },
   { value: 'lower_body', label: 'Lower Body', icon: '👖' },
   { value: 'dresses', label: 'Dress', icon: '👗' }
 ];
@@ -130,7 +130,7 @@ return (
                 <span>AI Processing...</span>
               </span>
             ) : (
-              <span>🤖 Try with AI</span>
+              <span>✨ Try with AI</span>
             )}
           </button>
         </div>

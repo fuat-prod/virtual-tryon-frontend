@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 const categories = [
-  { value: 'upper_body', label: 'Upper Body', icon: '👔', description: 'T-shirts, Shirts, Jackets' },
+  { value: 'upper_body', label: 'Upper Body', icon: '👚', description: 'T-shirts, Shirts, Jackets' },
   { value: 'lower_body', label: 'Lower Body', icon: '👖', description: 'Pants, Jeans, Shorts' },
   { value: 'dresses', label: 'Dress', icon: '👗', description: 'Dresses, Gowns, Robes' }
 ];
@@ -11,19 +11,20 @@ const CategorySelector = ({ selectedCategory, onCategoryChange }) => {
   const selectedCat = categories.find(cat => cat.value === selectedCategory) || categories[0];
 
   return (
-    <div className="bg-white rounded-xl p-4 md:p-6 shadow-lg mb-6">
+     <div className="glass-card rounded-2xl p-6 mb-6 relative z-20">
       <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-2">
         <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-purple-500 text-white text-sm mr-3">
           👗
         </span>
         Select Category
       </h3>
+
       <p className="text-sm text-gray-600 mb-4">Choose clothing type to try on</p>
       
       <div className="relative">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="w-full bg-gray-50 border-2 border-gray-200 rounded-lg p-4 text-left flex items-center justify-between hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+        className="w-full bg-white/50 backdrop-blur border-2 border-gray-200/50 rounded-xl p-4 text-left flex items-center justify-between hover:border-violet-500 focus:border-violet-500 focus:outline-none transition-all duration-300 hover:shadow-soft"
         >
           <div className="flex items-center space-x-3">
             <span className="text-2xl">{selectedCat.icon}</span>
@@ -38,7 +39,7 @@ const CategorySelector = ({ selectedCategory, onCategoryChange }) => {
         </button>
         
         {isOpen && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white/95 backdrop-blur border border-gray-200/50 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto">
             {categories.map((category) => (
               <button
                 key={category.value}

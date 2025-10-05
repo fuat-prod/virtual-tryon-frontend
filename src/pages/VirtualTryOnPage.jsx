@@ -5,9 +5,10 @@ import ImageUploader from '../components/upload/ImageUploader'
 import ResultDisplay from '../components/result/ResultDisplay'
 import ProgressBar from '../components/common/ProgressBar'
 import PhotoGuide from '../components/common/PhotoGuide'
+import Header from '../components/common/Header'
 
 const categories = [
-  { value: 'upper_body', label: 'Upper Body', icon: '👔' },
+  { value: 'upper_body', label: 'Upper Body', icon: '👚' },
   { value: 'lower_body', label: 'Lower Body', icon: '👖' },
   { value: 'dresses', label: 'Dress', icon: '👗' }
 ];
@@ -76,11 +77,17 @@ function VirtualTryOnPage() {
   const isGenerateEnabled = userImage && clothingImage && !isLoading;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary to-secondary p-4">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl md:text-5xl font-bold text-white text-center mb-8">
-          👗 Dress AI Virtual Try-On
-        </h1>
+      <div className="min-h-screen bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 p-4">
+      {/* Floating orbs for depth */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse animation-delay-2000" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-pulse animation-delay-4000" />
+      </div>
+      
+      <div className="max-w-6xl mx-auto relative z-10">        
+
+      <Header />
         
         <ProgressBar currentStep={isLoading ? 3 : resultImageUrl ? 4 : currentStep} />
         
@@ -115,11 +122,11 @@ function VirtualTryOnPage() {
           <button
             onClick={handleGenerate}
             disabled={!isGenerateEnabled}
-            className={`px-8 py-4 rounded-xl text-xl font-bold transition-all duration-300 ${
-              isGenerateEnabled
-                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 shadow-lg hover:shadow-xl transform hover:scale-105'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
+          className={`px-8 py-4 rounded-xl text-lg font-semibold transition-all duration-300 ${
+            isGenerateEnabled
+             ? 'btn-primary transform hover:scale-[1.02]'
+             : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+          }`}
           >
             {isLoading ? (
               <span className="flex items-center justify-center space-x-3">
@@ -127,7 +134,7 @@ function VirtualTryOnPage() {
                 <span>AI Processing...</span>
               </span>
             ) : (
-              <span>🤖 Try with AI</span>
+              <span>✨ Try with AI</span>
             )}
           </button>
         </div>

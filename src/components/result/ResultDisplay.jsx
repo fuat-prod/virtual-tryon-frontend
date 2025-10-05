@@ -15,7 +15,7 @@ const ResultDisplay = ({
   }
 
   return (
-    <div className="bg-white rounded-xl p-4 md:p-6 shadow-lg">
+      <div className="glass-card rounded-2xl p-6 shadow-xl">
       <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-4">
         <span className={`
           inline-flex items-center justify-center w-8 h-8 rounded-full text-white text-sm mr-3

@@ -1,10 +1,10 @@
 const PhotoGuide = () => {
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 md:p-6 mb-6">
+     <div className="glass-card rounded-2xl p-6 mb-6 border-2 border-violet-200/30">
       <h3 className="text-lg font-bold text-blue-800 mb-3">📸 Photo Guide</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <div>
-          <h4 className="font-semibold text-blue-700 mb-2">👤 Person Photo:</h4>
+          <h4 className="font-semibold text-blue-700 mb-2">👩 Person Photo:</h4>
           <ul className="text-sm text-blue-600 space-y-1">
             <li className="flex items-center">
               <span className="text-green-600 mr-2">✅</span>
@@ -25,7 +25,7 @@ const PhotoGuide = () => {
           </ul>
         </div>
         <div>
-          <h4 className="font-semibold text-blue-700 mb-2">👕 Clothing Photo:</h4>
+          <h4 className="font-semibold text-blue-700 mb-2">👚 Clothing Photo:</h4>
           <ul className="text-sm text-blue-600 space-y-1">
             <li className="flex items-center">
               <span className="text-green-600 mr-2">✅</span>

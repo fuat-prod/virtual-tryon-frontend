@@ -55,10 +55,11 @@ const ImageUploader = ({
 
   return (
     <div className={`
-      bg-white rounded-xl p-4 md:p-6 shadow-lg transition-all
-      ${isActive ? 'ring-2 ring-blue-500' : ''}
-      ${error ? 'animate-pulse' : ''}
-    `}>
+     glass-card rounded-2xl p-6 transition-all duration-300
+     ${isActive ? 'ring-2 ring-violet-500 shadow-glow' : ''}
+     ${error ? 'animate-pulse' : ''}
+     hover:shadow-xl
+   `}>
       <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-2">
         <span className={`
           inline-flex items-center justify-center w-8 h-8 rounded-full text-white text-sm mr-3
@@ -72,7 +73,7 @@ const ImageUploader = ({
       
       <div 
         onClick={openFileSelector}
-        className="border-2 border-dashed rounded-lg p-6 md:p-8 text-center cursor-pointer transition-all duration-200 border-gray-300 hover:border-blue-500 hover:bg-blue-50"
+       className="border-2 border-dashed rounded-xl p-6 md:p-8 text-center cursor-pointer transition-all duration-300 border-gray-300/50 hover:border-violet-500 hover:bg-violet-50/30 backdrop-blur"
       >
         {uploadedImage ? (
           <div className="space-y-4">

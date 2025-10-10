@@ -52,3 +52,12 @@
 .animation-delay-4000 {
   animation-delay: 4s;
 }
+
+/* Hide scrollbar for mobile slider */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

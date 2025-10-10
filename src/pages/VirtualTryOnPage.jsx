@@ -5,7 +5,8 @@ import ImageUploader from '../components/upload/ImageUploader'
 import ResultDisplay from '../components/result/ResultDisplay'
 import ProgressBar from '../components/common/ProgressBar'
 import PhotoGuide from '../components/common/PhotoGuide'
-import Header from '../components/common/Header'
+import FeaturesSection from '../components/home/FeaturesSection'
+import ReviewsSection from '../components/home/ReviewsSection'
 
 const categories = [
   { value: 'upper_body', label: 'Upper Body', icon: '👚' },
@@ -77,18 +78,18 @@ function VirtualTryOnPage() {
   const isGenerateEnabled = userImage && clothingImage && !isLoading;
 
   return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 p-4">
-      {/* Floating orbs for depth */}
+   <div className="min-h-screen bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 pt-20 px-4 pb-8 md:pt-24 md:p-4">
+      {/* Floating orbs for depth - mobile optimized */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse animation-delay-2000" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-pulse animation-delay-4000" />
+        <div className="absolute -top-20 -right-20 md:-top-40 md:-right-40 w-40 md:w-80 h-40 md:h-80 bg-white/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute -bottom-20 -left-20 md:-bottom-40 md:-left-40 w-40 md:w-80 h-40 md:h-80 bg-white/10 rounded-full blur-3xl animate-pulse animation-delay-2000" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 md:w-96 h-48 md:h-96 bg-white/5 rounded-full blur-3xl animate-pulse animation-delay-4000" />
       </div>
       
       <div className="max-w-6xl mx-auto relative z-10">        
 
-      <Header />
-        
+        <FeaturesSection />    
+    
         <ProgressBar currentStep={isLoading ? 3 : resultImageUrl ? 4 : currentStep} />
         
         <CategorySelector 
@@ -147,6 +148,9 @@ function VirtualTryOnPage() {
           selectedCategory={selectedCategory}
           onDownload={handleDownload}
         />
+
+        <ReviewsSection />   
+
       </div>
     </div>
   )

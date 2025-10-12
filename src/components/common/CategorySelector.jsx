@@ -3,7 +3,7 @@ import { useState } from 'react';
 const categories = [
   { value: 'upper_body', label: 'Upper Body', icon: '👚', description: 'T-shirts, Shirts, Jackets' },
   { value: 'lower_body', label: 'Lower Body', icon: '👖', description: 'Pants, Jeans, Shorts' },
-  { value: 'dresses', label: 'Dress', icon: '👗', description: 'Dresses, Gowns, Robes' }
+  { value: 'dresses', label: 'Full Outfit', icon: '👗', description: 'Dresses, Suits, Outfits' }
 ];
 
 const CategorySelector = ({ selectedCategory, onCategoryChange }) => {

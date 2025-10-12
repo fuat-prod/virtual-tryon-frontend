@@ -11,7 +11,7 @@ import ReviewsSection from '../components/home/ReviewsSection'
 const categories = [
   { value: 'upper_body', label: 'Upper Body', icon: '👚' },
   { value: 'lower_body', label: 'Lower Body', icon: '👖' },
-  { value: 'dresses', label: 'Dress', icon: '👗' }
+  { value: 'dresses', label: 'Full Outfit', icon: '👗' }
 ];
 
 function VirtualTryOnPage() {
@@ -31,6 +31,7 @@ function VirtualTryOnPage() {
   }, [userImage, clothingImage])
 
   const handleGenerate = async () => {
+    // Her iki resim de gerekli
     if (!userImage || !clothingImage) {
       alert('Please upload both photos!');
       return;
@@ -62,7 +63,7 @@ function VirtualTryOnPage() {
       setIsLoading(false);
       setProgress('');
     }
-  };
+  };  
 
   const handleDownload = () => {
     if (resultImageUrl) {

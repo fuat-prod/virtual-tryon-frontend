@@ -13,11 +13,12 @@ const api = axios.create({
 });
 
 export const virtualTryOnService = {
-  async processImage(userImage, clothingImage, category) {
+  async processImage(userImage, clothingImage, category, selectedApi = 'idm-vton') {
     const formData = new FormData();
     formData.append('userImage', userImage);
     formData.append('clothingImage', clothingImage);
     formData.append('category', category);
+    formData.append('selectedApi', selectedApi); // 👈 Multi-API support added
 
     try {
       const response = await api.post('/api/process-image', formData);

@@ -13,18 +13,32 @@ const api = axios.create({
 });
 
 export const virtualTryOnService = {
-  async processImage(userImage, clothingImage, category, selectedApi = 'idm-vton') {
+  async processImage(userImage, clothingImage, category, userId, selectedApi = 'nano-banana') {
     const formData = new FormData();
     formData.append('userImage', userImage);
     formData.append('clothingImage', clothingImage);
     formData.append('category', category);
-    formData.append('selectedApi', selectedApi); // 👈 Multi-API support added
+    formData.append('userId', userId);  // ← USER ID EKLENDI
+    if (selectedApi) {
+      formData.append('api', selectedApi); // Changed from selectedApi to api
+    }
 
     try {
       const response = await api.post('/api/process-image', formData);
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.error || error.message);
+      // Handle different error codes
+      const errorData = error.response?.data;
+      
+      if (errorData?.code === 'NO_CREDITS') {
+        throw {
+          code: 'NO_CREDITS',
+          message: 'No free trials or credits remaining',
+          user: errorData.user
+        };
+      }
+      
+      throw new Error(errorData?.error || error.message);
     }
   },
 

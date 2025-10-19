@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { virtualTryOnService } from '../services/api'
+import { useUser } from '../contexts/UserContext'
 import CategorySelector from '../components/common/CategorySelector'
 import ImageUploader from '../components/upload/ImageUploader'
 import ResultDisplay from '../components/result/ResultDisplay'
@@ -14,7 +15,9 @@ const categories = [
   { value: 'dresses', label: 'Full Outfit', icon: '👗' }
 ];
 
+
 function VirtualTryOnPage() {
+  const { user, loading: userLoading, updateUserCredits, useFreeTrialLocally } = useUser();
   const [selectedCategory, setSelectedCategory] = useState('upper_body')
   const [userImage, setUserImage] = useState(null)
   const [clothingImage, setClothingImage] = useState(null)
@@ -31,39 +34,60 @@ function VirtualTryOnPage() {
   }, [userImage, clothingImage])
 
   const handleGenerate = async () => {
-    // Her iki resim de gerekli
-    if (!userImage || !clothingImage) {
-      alert('Please upload both photos!');
-      return;
-    }
+  // Her iki resim de gerekli
+  if (!userImage || !clothingImage) {
+    alert('Please upload both photos!');
+    return;
+  }
 
-    setIsLoading(true);
-    setResultImageUrl(null);
-    setError(null);
-    setProgress('Initializing AI model...');
+  // User kontrolü
+  if (!user) {
+    alert('Please wait, user is loading...');
+    return;
+  }
 
-    try {
-      const data = await virtualTryOnService.processImage(
-        userImage, 
-        clothingImage, 
-        selectedCategory
-      );
+  setIsLoading(true);
+  setResultImageUrl(null);
+  setError(null);
+  setProgress('Initializing AI model...');
 
-      if (data.success) {
-        setResultImageUrl(data.imageUrl);
-        setProgress('Process completed!');
+  try {
+    const data = await virtualTryOnService.processImage(
+      userImage, 
+      clothingImage, 
+      selectedCategory,
+      user.id  // ← USER ID EKLENDI
+    );
+
+    if (data.success) {
+      setResultImageUrl(data.imageUrl);
+      setProgress('Process completed!');
+      
+      // Update user credits/trials locally
+      if (data.usedFreeTrial) {
+        useFreeTrialLocally();
       } else {
-        throw new Error(data.error || 'Unknown error occurred');
+        updateUserCredits(data.creditsRemaining);
       }
-
-    } catch (error) {
-      console.error('❌ Process error:', error);
-      setError(error.message);
-    } finally {
-      setIsLoading(false);
-      setProgress('');
+    } else {
+      throw new Error(data.error || 'Unknown error occurred');
     }
-  };  
+
+  } catch (error) {
+    console.error('❌ Process error:', error);
+    
+    // Check for NO_CREDITS error
+    if (error.code === 'NO_CREDITS') {
+      setError('No free trials or credits remaining. Please purchase credits to continue.');
+      // TODO: Show paywall modal
+    } else {
+      setError(error.message);
+    }
+  } finally {
+    setIsLoading(false);
+    setProgress('');
+  }
+};
 
   const handleDownload = () => {
     if (resultImageUrl) {

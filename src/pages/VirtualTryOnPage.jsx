@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { virtualTryOnService } from '../services/api'
 import { useUser } from '../contexts/UserContext'
+import PaywallModal from '../components/payment/PaywallModal'
 import CategorySelector from '../components/common/CategorySelector'
 import ImageUploader from '../components/upload/ImageUploader'
 import ResultDisplay from '../components/result/ResultDisplay'
@@ -26,6 +27,10 @@ function VirtualTryOnPage() {
   const [resultImageUrl, setResultImageUrl] = useState(null)
   const [error, setError] = useState(null)
   const [progress, setProgress] = useState('')
+
+ // Paywall modal state
+  const [showPaywall, setShowPaywall] = useState(false)
+  const [paywallReason, setPaywallReason] = useState('no_credits') 
 
   useEffect(() => {
     if (!userImage) setCurrentStep(1)
@@ -79,7 +84,8 @@ function VirtualTryOnPage() {
     // Check for NO_CREDITS error
     if (error.code === 'NO_CREDITS') {
       setError('No free trials or credits remaining. Please purchase credits to continue.');
-      // TODO: Show paywall modal
+      setShowPaywall(true);
+      setPaywallReason('no_credits');
     } else {
       setError(error.message);
     }
@@ -174,7 +180,26 @@ function VirtualTryOnPage() {
           onDownload={handleDownload}
         />
 
+
+        {/* TEST: Paywall Button - Production'da silinecek */}
+        <div className="text-center mb-6">
+          <button
+            onClick={() => setShowPaywall(true)}
+            className="px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 font-semibold"
+          >
+            🧪 Test Paywall Modal
+          </button>
+        </div>
+
+
         <ReviewsSection />   
+
+
+        <PaywallModal 
+          isOpen={showPaywall}
+          onClose={() => setShowPaywall(false)}
+          reason={paywallReason}
+        />
 
       </div>
     </div>

@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 const Footer = () => {
   return (
     <footer className="bg-gray-900 text-gray-300 py-12 mt-20">
@@ -6,14 +8,14 @@ const Footer = () => {
           {/* Brand Section */}
           <div className="col-span-1 md:col-span-2">
             <h3 className="text-2xl font-display font-bold text-white mb-4">
-              Dress AI
+              DressAI
             </h3>
             <p className="text-gray-400 mb-4">
               Experience the future of fashion with AI-powered virtual try-on technology. 
               Transform your wardrobe instantly.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+              <a href="mailto:support@dressai.app" className="text-gray-400 hover:text-white transition-colors">
                 <span className="text-2xl">📧</span>
               </a>
               <a href="#" className="text-gray-400 hover:text-white transition-colors">
@@ -29,10 +31,10 @@ const Footer = () => {
           <div>
             <h4 className="text-white font-semibold mb-4">Quick Links</h4>
             <ul className="space-y-2">
-              <li><a href="#" className="hover:text-white transition-colors">How it Works</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Gallery</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Pricing</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">FAQ</a></li>
+              <li><a href="#how-it-works" className="hover:text-white transition-colors">How it Works</a></li>
+              <li><a href="#gallery" className="hover:text-white transition-colors">Gallery</a></li>
+              <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
+              <li><a href="#faq" className="hover:text-white transition-colors">FAQ</a></li>
             </ul>
           </div>
 
@@ -40,8 +42,16 @@ const Footer = () => {
           <div>
             <h4 className="text-white font-semibold mb-4">Legal</h4>
             <ul className="space-y-2">
-              <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
+              <li>
+                <Link to="/privacy-policy" className="hover:text-white transition-colors">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link to="/terms-of-service" className="hover:text-white transition-colors">
+                  Terms of Service
+                </Link>
+              </li>
               <li><a href="#" className="hover:text-white transition-colors">Cookie Policy</a></li>
             </ul>
           </div>
@@ -49,7 +59,7 @@ const Footer = () => {
 
         <div className="border-t border-gray-800 mt-8 pt-8 text-center">
           <p className="text-gray-500">
-            © 2024 Dress AI. All rights reserved. Made with 💜 by AI Fashion Tech
+            © 2025 DressAI. All rights reserved.
           </p>
         </div>
       </div>

@@ -39,7 +39,7 @@ export default function RefundPolicy() {
               <div className="bg-blue-50 border-l-4 border-blue-400 p-6 mt-6 mb-6">
                 <p className="text-gray-800 font-semibold mb-3">To qualify for a refund, you must:</p>
                 <ul className="list-disc pl-6 text-gray-700 space-y-2">
-                  <li>Contact us within <strong>7 days</strong> of the transaction</li>
+                  <li>Contact us within <strong>14 days</strong> of the transaction</li>
                   <li>Provide the email used for purchase, your transaction ID, and a brief explanation of the issue</li>
                 </ul>
               </div>

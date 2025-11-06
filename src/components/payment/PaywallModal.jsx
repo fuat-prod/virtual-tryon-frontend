@@ -29,6 +29,7 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
    // Paddle Checkout'u aç
     openCheckout(plan.paddlePriceId, {
      userId: user.id,
+     userEmail: user.email,
      planId: plan.id,
      credits: plan.credits
    });

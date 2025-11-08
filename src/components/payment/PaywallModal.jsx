@@ -12,28 +12,78 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
   if (!isOpen) return null;
 
   const handlePurchase = (plan) => {
-   console.log('Purchase clicked:', plan);
-  
-   // Paddle hazır mı kontrol et
-   if (!isReady) {
-     alert('Payment system is loading, please wait...');
-     return;
-   }
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('💳 PURCHASE HANDLER CALLED');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('Plan:', plan);
+    
+    // Paddle hazır mı kontrol et
+    if (!isReady) {
+      console.error('❌ Paddle not ready');
+      alert('Payment system is loading, please wait...');
+      return;
+    }
+    console.log('✅ Paddle ready');
 
-   // User var mı kontrol et
-   if (!user) {
-     alert('User not found, please refresh the page');
-     return;
-   }
+    // User var mı kontrol et
+    if (!user) {
+      console.error('❌ User not found');
+      alert('User not found, please refresh the page');
+      return;
+    }
+    console.log('✅ User exists');
 
-   // Paddle Checkout'u aç
+    // User object detaylı debug
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('👤 USER OBJECT DEBUG:');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('Full user object:', user);
+    console.log('user.id:', user.id);
+    console.log('user.email:', user.email);
+    console.log('user.user_metadata:', user.user_metadata);
+    console.log('user.user_metadata?.email:', user.user_metadata?.email);
+    console.log('user.identities:', user.identities);
+    
+    // Email'i bul (birden fazla yerden dene)
+    let userEmail = user.email 
+      || user.user_metadata?.email 
+      || user.identities?.[0]?.identity_data?.email
+      || null;
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📧 EMAIL RESOLUTION:');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('Resolved email:', userEmail);
+    console.log('Email exists?', !!userEmail);
+
+    // Email yoksa kullanıcıdan iste
+    if (!userEmail) {
+      console.error('❌ No email found in user object');
+      
+      // Geçici çözüm: Kullanıcıdan email iste
+      userEmail = prompt('Please enter your email address for payment:');
+      
+      if (!userEmail || !userEmail.includes('@')) {
+        console.error('❌ Invalid email provided');
+        alert('Valid email is required for payment');
+        return;
+      }
+      
+      console.log('✅ Email manually provided:', userEmail);
+    }
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🚀 CALLING PADDLE CHECKOUT:');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    // Paddle Checkout'u aç
     openCheckout(plan.paddlePriceId, {
-     userId: user.id,
-     userEmail: user.email,
-     planId: plan.id,
-     credits: plan.credits
-   });
- };
+      userId: user.id,
+      userEmail: userEmail, // ← Resolved email
+      planId: plan.id,
+      credits: plan.credits
+    });
+  };
 
   const getTitle = () => {
     switch (reason) {

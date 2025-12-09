@@ -1,3 +1,11 @@
+/*
+==========================================
+PADDLE HOOK (YEDEK - DEVRE DIŞI)
+TODO: YENİ ÖDEME SİSTEMİ İÇİN BENZERİ YAPILACAK
+==========================================
+
+
+
 import { useEffect, useState } from 'react';
 
 export function usePaddle() {
@@ -182,4 +190,20 @@ export function usePaddle() {
   };
 
   return { paddle, isReady, openCheckout };
+}
+
+
+==========================================
+*/
+
+
+// ✅ PLACEHOLDER (YENİ ÖDEME SİSTEMİ İÇİN)
+export function usePaddle() {
+  return {
+    paddle: null,
+    isReady: false,
+    openCheckout: () => {
+      console.warn('⚠️ Payment system not integrated yet');
+    }
+  };
 }

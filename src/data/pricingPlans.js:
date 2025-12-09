@@ -16,7 +16,8 @@ export const PRICING_PLANS = [
       'Valid for 7 days'
     ],
     popular: false,
-    paddlePriceId: 'pri_01k885kd54vvka1hwjh5ftbsey', 
+     // paddlePriceId: 'pri_01k885p36tg85wx9j7hx8s3z7b', // ❌ Paddle (not used)
+    // TODO: Add Lemon Squeezy / Polar / İyzico price ID here
   },
   {
     id: 'monthly',
@@ -36,7 +37,7 @@ export const PRICING_PLANS = [
       'Valid for 30 days'
     ],
     popular: true,
-    paddlePriceId: 'pri_01k885p36tg85wx9j7hhx83z7b',  // ← Eklendi
+   //  paddlePriceId: 'pri_01k885p36tg85wx9j7hhx83z7b',  // ❌ Paddle (not used)
   },
   {
     id: 'yearly',
@@ -57,7 +58,7 @@ export const PRICING_PLANS = [
       'Valid for 365 days'
     ],
     popular: false,
-    paddlePriceId: 'pri_01k885qvwyz3m794tkqxr03k23',  // ← Eklendi
+    // paddlePriceId: 'pri_01k885qvwyz3m794tkqxr03k23',  // ❌ Paddle (not used)
   },
   {
     id: 'credits_200',  // ← Güncellendi
@@ -76,6 +77,6 @@ export const PRICING_PLANS = [
       'Download Results'
     ],
     popular: false,
-    paddlePriceId: 'pri_01k885v4b7bf2drha0vcw8pcbj',  // ← Eklendi
+    // paddlePriceId: 'pri_01k885v4b7bf2drha0vcw8pcbj',  // ❌ Paddle (not used)
   }
 ];

@@ -16,19 +16,20 @@ export const PRICING_PLANS = [
       'Valid for 7 days'
     ],
     popular: false,
-    paddlePriceId: 'pri_01k885kd54vvka1hwjh5ftbsey', 
+    // paddlePriceId: 'pri_01k885kd54vvka1hwjh5ftbsey', // ❌ Paddle (not used)
+    polarProductId: import.meta.env.VITE_POLAR_PRODUCT_WEEKLY, // ✅ Polar
   },
   {
     id: 'monthly',
     name: 'Monthly Pro',
-    price: '$9.99',  // ← Güncellendi
-    priceValue: 9.99,  // ← Güncellendi
+    price: '$9.99',
+    priceValue: 9.99,
     currency: 'USD',
-    credits: 50,  // ← Güncellendi
+    credits: 50,
     period: 'month',
     badge: 'Most Popular',
     features: [
-      '50 AI Try-Ons',  // ← Güncellendi
+      '50 AI Try-Ons',
       'High Quality Results',
       'All Categories',
       'Download Results',
@@ -36,19 +37,20 @@ export const PRICING_PLANS = [
       'Valid for 30 days'
     ],
     popular: true,
-    paddlePriceId: 'pri_01k885p36tg85wx9j7hhx83z7b',  // ← Eklendi
+    // paddlePriceId: 'pri_01k885p36tg85wx9j7hhx83z7b', // ❌ Paddle (not used)
+    polarProductId: import.meta.env.VITE_POLAR_PRODUCT_MONTHLY, // ✅ Polar
   },
   {
     id: 'yearly',
     name: 'Yearly VIP',
-    price: '$19.99',  // ← Güncellendi
-    priceValue: 19.99,  // ← Güncellendi
+    price: '$19.99',
+    priceValue: 19.99,
     currency: 'USD',
-    credits: 100,  // ← Güncellendi
+    credits: 100,
     period: 'year',
     badge: 'Best Value',
     features: [
-      '100 AI Try-Ons',  // ← Güncellendi
+      '100 AI Try-Ons',
       'High Quality Results',
       'All Categories',
       'Download Results',
@@ -57,25 +59,27 @@ export const PRICING_PLANS = [
       'Valid for 365 days'
     ],
     popular: false,
-    paddlePriceId: 'pri_01k885qvwyz3m794tkqxr03k23',  // ← Eklendi
+    // paddlePriceId: 'pri_01k885qvwyz3m794tkqxr03k23', // ❌ Paddle (not used)
+    polarProductId: import.meta.env.VITE_POLAR_PRODUCT_YEARLY, // ✅ Polar
   },
   {
-    id: 'credits_200',  // ← Güncellendi
-    name: '200 Credits',  // ← Güncellendi
-    price: '$39.99',  // ← Güncellendi
-    priceValue: 39.99,  // ← Güncellendi
+    id: 'credits_200',
+    name: '200 Credits',
+    price: '$39.99',
+    priceValue: 39.99,
     currency: 'USD',
-    credits: 200,  // ← Güncellendi
+    credits: 200,
     period: 'one-time',
     badge: null,
     features: [
-      '200 AI Try-Ons',  // ← Güncellendi
+      '200 AI Try-Ons',
       'No Expiration',
       'High Quality Results',
       'All Categories',
       'Download Results'
     ],
     popular: false,
-    paddlePriceId: 'pri_01k885v4b7bf2drha0vcw8pcbj',  // ← Eklendi
+    // paddlePriceId: 'pri_01k885v4b7bf2drha0vcw8pcbj', // ❌ Paddle (not used)
+    polarProductId: import.meta.env.VITE_POLAR_PRODUCT_CREDITS_200, // ✅ Polar
   }
 ];

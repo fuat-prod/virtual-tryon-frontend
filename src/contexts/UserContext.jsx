@@ -1,10 +1,12 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { getDeviceFingerprint } from '../utils/fingerprint';
+import { supabase } from '../config/supabase';
 
 const UserContext = createContext();
 
 export function UserProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -18,7 +20,16 @@ export function UserProvider({ children }) {
       setLoading(true);
       setError(null);
 
-      // 1. localStorage'dan mevcut user'ı kontrol et
+      // 1. Supabase session kontrolü
+      const { data: { session: existingSession } } = await supabase.auth.getSession();
+      
+      if (existingSession) {
+        // Registered user var
+        await loadRegisteredUser(existingSession);
+        return;
+      }
+
+      // 2. localStorage'dan anonymous user kontrol et
       const cachedUser = localStorage.getItem('user');
       if (cachedUser) {
         const parsedUser = JSON.parse(cachedUser);
@@ -28,10 +39,10 @@ export function UserProvider({ children }) {
         refreshUser(parsedUser.id);
       }
 
-      // 2. Device fingerprint al
+      // 3. Device fingerprint al
       const { deviceId, deviceInfo } = await getDeviceFingerprint();
 
-      // 3. Backend'e anonymous auth isteği gönder
+      // 4. Backend'e anonymous auth isteği gönder
       const response = await fetch(`${API_URL}/api/auth/anonymous`, {
         method: 'POST',
         headers: {
@@ -57,12 +68,236 @@ export function UserProvider({ children }) {
       } else {
         throw new Error(data.error || 'Authentication failed');
       }
-
     } catch (err) {
       console.error('User initialization error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Registered user'ı yükle (Supabase session'dan)
+   */
+  const loadRegisteredUser = async (session) => {
+    try {
+      const response = await fetch(`${API_URL}/api/auth/user/${session.user.id}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setUser(data.user);
+        setSession(session);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        console.log('✅ Registered user loaded');
+      }
+    } catch (err) {
+      console.error('Load registered user error:', err);
+    }
+  };
+
+  /**
+   * Email/Password ile kayıt ol
+   */
+  const registerWithEmail = async (email, password) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { deviceId } = await getDeviceFingerprint();
+
+      const response = await fetch(`${API_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          deviceId
+        })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Registration failed');
+      }
+
+      setUser(data.user);
+      setSession(data.session);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      return {
+        success: true,
+        message: 'Registration successful'
+      };
+
+    } catch (err) {
+      console.error('Register error:', err);
+      setError(err.message);
+      return {
+        success: false,
+        error: err.message
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Email/Password ile giriş yap
+   */
+  const loginWithEmail = async (email, password) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password
+        })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Login failed');
+      }
+
+      setUser(data.user);
+      setSession(data.session);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      return {
+        success: true,
+        message: 'Login successful'
+      };
+
+    } catch (err) {
+      console.error('Login error:', err);
+      setError(err.message);
+      return {
+        success: false,
+        error: err.message
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Anonymous user'ı registered user'a dönüştür
+   */
+  const migrateAnonymousToAuth = async (email, password) => {
+    try {
+      if (!user || !user.is_anonymous) {
+        throw new Error('No anonymous user to migrate');
+      }
+
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch(`${API_URL}/api/auth/migrate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          anonymousUserId: user.id,
+          email,
+          password
+        })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Migration failed');
+      }
+
+      setUser(data.user);
+      setSession(data.session);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      return {
+        success: true,
+        message: 'Account created successfully! Your credits have been preserved.'
+      };
+
+    } catch (err) {
+      console.error('Migration error:', err);
+      setError(err.message);
+      return {
+        success: false,
+        error: err.message
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Google ile giriş yap
+   */
+  const loginWithGoogle = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+
+      if (error) throw error;
+
+      return {
+        success: true
+      };
+
+    } catch (err) {
+      console.error('Google login error:', err);
+      return {
+        success: false,
+        error: err.message
+      };
+    }
+  };
+
+  /**
+   * Password reset email gönder
+   */
+  const sendPasswordReset = async (email) => {
+    try {
+      const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to send reset email');
+      }
+
+      return {
+        success: true,
+        message: 'Password reset email sent! Check your inbox.'
+      };
+
+    } catch (err) {
+      console.error('Password reset error:', err);
+      return {
+        success: false,
+        error: err.message
+      };
     }
   };
 
@@ -114,12 +349,45 @@ export function UserProvider({ children }) {
   };
 
   /**
-   * Logout (clear local state)
+   * Logout
    */
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      // Supabase session varsa çıkış yap
+      if (session) {
+        await supabase.auth.signOut();
+      }
+
+      setUser(null);
+      setSession(null);
+      localStorage.removeItem('user');
+
+      // Yeni anonymous user oluştur
+      await initializeUser();
+
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
   };
+
+  // Auth state değişikliklerini dinle
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event);
+
+        if (event === 'SIGNED_IN' && session) {
+          await loadRegisteredUser(session);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setSession(null);
+          await initializeUser();
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Component mount olunca user'ı initialize et
   useEffect(() => {
@@ -128,14 +396,22 @@ export function UserProvider({ children }) {
 
   const value = {
     user,
+    session,
     loading,
     error,
+    registerWithEmail,
+    loginWithEmail,
+    loginWithGoogle,
+    migrateAnonymousToAuth,
+    sendPasswordReset,
     refreshUser,
     updateUserCredits,
     useFreeTrialLocally,
     logout,
     hasFreeTrial: user ? user.free_trials_used < user.free_trials_limit : false,
-    hasCredits: user ? user.credits > 0 : false
+    hasCredits: user ? user.credits > 0 : false,
+    isAnonymous: user ? user.is_anonymous : true,
+    isAuthenticated: !!(session && user && !user.is_anonymous)
   };
 
   return (

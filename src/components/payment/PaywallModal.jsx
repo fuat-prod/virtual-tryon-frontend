@@ -7,7 +7,7 @@ import { useUser } from '../../contexts/UserContext';
 
 export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' }) {
   const [selectedPlan, setSelectedPlan] = useState('monthly');
-  const { user, isAnonymous, refreshUser, refreshCredits, refreshing } = useUser(); // ✅ refreshCredits, refreshing ekle
+  const { user, session, isAnonymous, isAuthenticated, refreshUser, refreshCredits, refreshing } = useUser(); // ✅ refreshCredits, refreshing ekle
   const { openCheckout, isLoading, error } = usePolar();
   const navigate = useNavigate();
   
@@ -77,17 +77,24 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
 
   if (!isOpen) return null;
 
- const handlePurchase = (plan) => { // ✅ async kaldırıldı!
+ const handlePurchase = (plan) => {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('💳 PURCHASE HANDLER CALLED');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('Plan:', plan);
   console.log('User:', user);
+  console.log('Session:', session);
   console.log('Is Anonymous:', isAnonymous);
+  console.log('Is Authenticated:', isAuthenticated);
   
-  // ANONYMOUS USER CHECK
-  if (isAnonymous) {
-    console.log('🔄 Anonymous user detected - redirecting to register');
+  // ✅ GÜÇLÜ AUTH CHECK - Session + isAuthenticated + user.is_anonymous
+  const isUserAuthenticated = session || isAuthenticated || (user && !user.is_anonymous);
+  
+  console.log('✅ Final auth check:', isUserAuthenticated);
+  
+  // ✅ Sadece kesinlikle anonymous ise redirect et
+  if (!isUserAuthenticated) {
+    console.log('🔄 Anonymous/unauthenticated user - redirecting to register');
     
     navigate('/register', {
       state: {
@@ -107,9 +114,9 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
     return;
   }
 
-  console.log('✅ Registered user - proceeding with payment');
+  console.log('✅ Authenticated user - proceeding with payment');
 
-  // ✅ openCheckout'u çağır ama BEKLEME!
+  // ✅ openCheckout ve polling (mevcut kod aynı kalır)
   const checkoutPromise = openCheckout(
     plan.polarProductId,
     {
@@ -121,17 +128,14 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
     user.id
   );
 
-  // ✅ HEMEN POLLING BAŞLAT
   console.log('🔄 Starting background credits polling immediately...');
   startCreditsPolling();
 
-  // ✅ Checkout result'u background'da handle et
   if (checkoutPromise && typeof checkoutPromise.then === 'function') {
     checkoutPromise
       .then(result => {
         console.log('📦 Checkout result (async):', result);
         
-        // Event listener varsa ekle
         if (result?.checkout?.addEventListener) {
           console.log('✅ Adding success event listener');
           result.checkout.addEventListener('success', async () => {
@@ -144,7 +148,6 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
       })
       .catch(err => {
         console.error('❌ Checkout error (async):', err);
-        // Polling zaten çalışıyor, sorun yok
       });
   }
 };

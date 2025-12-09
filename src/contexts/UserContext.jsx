@@ -8,6 +8,7 @@ export function UserProvider({ children }) {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false); // ✅ YENİ
   const [error, setError] = useState(null);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -324,6 +325,52 @@ export function UserProvider({ children }) {
   };
 
   /**
+   * ✅ YENİ: Credits'i güncelle (payment sonrası)
+   */
+  const refreshCredits = async () => {
+    if (!user?.id) {
+      console.warn('⚠️ No user ID, cannot refresh credits');
+      return false;
+    }
+
+    console.log('🔄 Refreshing user credits...');
+    setRefreshing(true);
+
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('credits, last_payment_at')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('❌ Error refreshing credits:', error);
+        throw error;
+      }
+
+      if (data) {
+        console.log('✅ Credits refreshed:', data.credits);
+        
+        const updatedUser = {
+          ...user,
+          credits: data.credits,
+          last_payment_at: data.last_payment_at
+        };
+        
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        
+        return true;
+      }
+    } catch (error) {
+      console.error('❌ Failed to refresh credits:', error);
+      return false;
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  /**
    * User credits'i güncelle (lokal)
    */
   const updateUserCredits = (newCredits) => {
@@ -398,6 +445,7 @@ export function UserProvider({ children }) {
     user,
     session,
     loading,
+    refreshing, // ✅ YENİ
     error,
     registerWithEmail,
     loginWithEmail,
@@ -405,6 +453,7 @@ export function UserProvider({ children }) {
     migrateAnonymousToAuth,
     sendPasswordReset,
     refreshUser,
+    refreshCredits, // ✅ YENİ
     updateUserCredits,
     useFreeTrialLocally,
     logout,

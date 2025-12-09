@@ -1,19 +1,83 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PRICING_PLANS } from '../../config/pricing';
-import { usePolar } from '../../hooks/usePolar'; // ✅ YENİ EKLENEN
-import { useUser } from '../../contexts/UserContext'; 
+import { usePolar } from '../../hooks/usePolar';
+import { useUser } from '../../contexts/UserContext';
 
 export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' }) {
   const [selectedPlan, setSelectedPlan] = useState('monthly');
-  const { user, isAnonymous, refreshUser } = useUser();
-  const { openCheckout, isLoading, error } = usePolar(); // ✅ YENİ EKLENEN
+  const { user, isAnonymous, refreshUser, refreshCredits, refreshing } = useUser(); // ✅ refreshCredits, refreshing ekle
+  const { openCheckout, isLoading, error } = usePolar();
   const navigate = useNavigate();
+  
+  const pollIntervalRef = useRef(null); // ✅ YENİ: Polling interval ref
+  const initialCreditsRef = useRef(null); // ✅ YENİ: Initial credits ref
+
+  // ✅ YENİ: Cleanup - modal kapanınca polling durdur
+  useEffect(() => {
+    if (!isOpen) {
+      stopCreditsPolling();
+    }
+    return () => {
+      stopCreditsPolling();
+    };
+  }, [isOpen]);
+
+  // ✅ YENİ: Initial credits kaydet
+  useEffect(() => {
+    if (isOpen && user) {
+      initialCreditsRef.current = user.credits;
+      console.log('💾 Initial credits saved:', user.credits);
+    }
+  }, [isOpen, user]);
+
+  // ✅ YENİ: Credits polling fonksiyonu
+  const startCreditsPolling = () => {
+    console.log('🔄 Starting credits polling...');
+    
+    let pollCount = 0;
+    const maxPolls = 20; // 20 * 3 = 60 saniye max
+
+    pollIntervalRef.current = setInterval(async () => {
+      pollCount++;
+      console.log(`📊 Polling credits... (${pollCount}/${maxPolls})`);
+
+      const success = await refreshCredits();
+
+      if (success && user && user.credits > initialCreditsRef.current) {
+        console.log('✅ Credits updated detected!');
+        console.log(`   ${initialCreditsRef.current} → ${user.credits}`);
+        
+        stopCreditsPolling();
+        
+        // 1.5 saniye sonra modal kapat
+        setTimeout(() => {
+          console.log('🎉 Closing modal after successful payment');
+          onClose();
+        }, 1500);
+      }
+
+      // Max polling reached
+      if (pollCount >= maxPolls) {
+        console.log('⏱️ Max polling reached, stopping...');
+        stopCreditsPolling();
+      }
+    }, 3000); // Her 3 saniyede bir kontrol
+  };
+
+  // ✅ YENİ: Polling durdur
+  const stopCreditsPolling = () => {
+    if (pollIntervalRef.current) {
+      console.log('🛑 Stopping credits polling');
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  };
 
   if (!isOpen) return null;
 
-  const handlePurchase = async (plan) => { // ✅ async eklendi
+  const handlePurchase = async (plan) => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('💳 PURCHASE HANDLER CALLED');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -34,7 +98,7 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
             name: plan.name,
             price: plan.price,
             credits: plan.credits,
-            polarProductId: plan.polarProductId // ✅ YENİ EKLENEN
+            polarProductId: plan.polarProductId
           },
           message: 'Create an account to purchase credits'
         }
@@ -47,11 +111,11 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
 
     console.log('✅ Registered user - proceeding with payment');
 
-    // ✅ POLAR CHECKOUT (YENİ ENTEGRASYON)
+    // ✅ POLAR CHECKOUT
     try {
       // Polar checkout aç
       const result = await openCheckout(
-        plan.polarProductId, // Polar product ID
+        plan.polarProductId,
         {
           id: plan.id,
           name: plan.name,
@@ -69,24 +133,33 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
 
       console.log('✅ Checkout opened successfully');
 
-      // Checkout success event listener (usePolar hook'da handle ediliyor)
-      // Burada ek success handling yapabiliriz
-      result.checkout.addEventListener('success', async () => {
-        console.log('🎉 Payment completed in PaywallModal');
-        
-        // User bilgisini yenile (credits güncellenmiş olacak)
-        await refreshUser();
-        
-        // Modal'ı kapat
-        onClose();
-        
-        // Success notification (optional)
-        // toast.success('Credits added! 🎉');
-      });
+      // ✅ YENİ: Polling başlat (fallback mechanism)
+      // Polar checkout açıldıktan sonra credits'i poll et
+      console.log('🔄 Starting background credits polling...');
+      startCreditsPolling();
+
+      // ✅ Polar success event listener (eğer Polar event gönderiyorsa)
+      if (result.checkout) {
+        result.checkout.addEventListener('success', async () => {
+          console.log('🎉 Polar success event received!');
+          
+          stopCreditsPolling(); // Polling'i durdur
+          
+          // Credits'i refresh et
+          await refreshCredits();
+          
+          // 1.5 saniye sonra modal kapat
+          setTimeout(() => {
+            console.log('🎉 Closing modal after Polar success event');
+            onClose();
+          }, 1500);
+        });
+      }
 
     } catch (err) {
       console.error('❌ Payment error:', err);
       alert('Payment error: ' + err.message);
+      stopCreditsPolling(); // Hata durumunda polling durdur
     }
   };
 
@@ -121,7 +194,7 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
           {/* Close Button - iOS Optimized */}
           <button
             onClick={onClose}
-            disabled={isLoading}
+            disabled={isLoading || refreshing}
             className="absolute top-4 right-4 z-10 p-3 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Close"
           >
@@ -145,6 +218,16 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
                 </p>
               </div>
             )}
+
+            {/* ✅ YENİ: Refreshing Credits Indicator */}
+            {refreshing && (
+              <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-white/30 backdrop-blur-sm rounded-lg">
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
+                <p className="text-sm text-white font-medium">
+                  Updating your credits...
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Pricing Cards */}
@@ -158,7 +241,7 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
                       ? 'border-purple-600 bg-purple-50 shadow-lg scale-[1.02]'
                       : 'border-gray-200 hover:border-purple-300 hover:shadow-md active:scale-[0.98]'
                   } ${plan.popular ? 'ring-2 ring-purple-600 ring-offset-2' : ''}`}
-                  onClick={() => !isLoading && setSelectedPlan(plan.id)}
+                  onClick={() => !isLoading && !refreshing && setSelectedPlan(plan.id)}
                 >
                   {/* Badge */}
                   {plan.badge && (
@@ -212,7 +295,7 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
                       e.stopPropagation();
                       handlePurchase(plan);
                     }}
-                    disabled={isLoading}
+                    disabled={isLoading || refreshing}
                     className={`w-full py-4 rounded-lg font-semibold transition-all touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed ${
                       selectedPlan === plan.id
                         ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg active:scale-95'
@@ -232,13 +315,18 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
                   const plan = PRICING_PLANS.find(p => p.id === selectedPlan);
                   handlePurchase(plan);
                 }}
-                disabled={isLoading}
+                disabled={isLoading || refreshing}
                 className="px-8 sm:px-12 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-base sm:text-lg font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 transition-all touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
                 {isLoading ? (
                   <span className="flex items-center justify-center">
                     <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 mr-2 animate-spin" />
                     Opening checkout...
+                  </span>
+                ) : refreshing ? (
+                  <span className="flex items-center justify-center">
+                    <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 mr-2 animate-spin" />
+                    Updating credits...
                   </span>
                 ) : (
                   isAnonymous ? 'Create Account & Continue →' : 'Continue to Payment →'

@@ -78,90 +78,69 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
   if (!isOpen) return null;
 
   const handlePurchase = async (plan) => {
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('💳 PURCHASE HANDLER CALLED');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('Plan:', plan);
-    console.log('User:', user);
-    console.log('Is Anonymous:', isAnonymous);
-    
-    // ✅ ANONYMOUS USER CHECK
-    if (isAnonymous) {
-      console.log('🔄 Anonymous user detected - redirecting to register');
-      
-      // Register sayfasına yönlendir (plan bilgisi ile)
-      navigate('/register', {
-        state: {
-          returnUrl: '/',
-          selectedPlan: {
-            id: plan.id,
-            name: plan.name,
-            price: plan.price,
-            credits: plan.credits,
-            polarProductId: plan.polarProductId
-          },
-          message: 'Create an account to purchase credits'
-        }
-      });
-      
-      // Modal'ı kapat
-      onClose();
-      return;
-    }
-
-    console.log('✅ Registered user - proceeding with payment');
-
-    // ✅ POLAR CHECKOUT
-    try {
-      // Polar checkout aç
-      const result = await openCheckout(
-        plan.polarProductId,
-        {
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('💳 PURCHASE HANDLER CALLED');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('Plan:', plan);
+  console.log('User:', user);
+  console.log('Is Anonymous:', isAnonymous);
+  
+  if (isAnonymous) {
+    console.log('🔄 Anonymous user detected - redirecting to register');
+    navigate('/register', {
+      state: {
+        returnUrl: '/',
+        selectedPlan: {
           id: plan.id,
           name: plan.name,
           price: plan.price,
-          credits: plan.credits
+          credits: plan.credits,
+          polarProductId: plan.polarProductId
         },
-        user.id
-      );
-
-      if (!result.success) {
-        console.error('❌ Checkout failed:', result.error);
-        alert('Payment error: ' + result.error);
-        return;
+        message: 'Create an account to purchase credits'
       }
+    });
+    onClose();
+    return;
+  }
 
-      console.log('✅ Checkout opened successfully');
+  console.log('✅ Registered user - proceeding with payment');
 
-      // ✅ YENİ: Polling başlat (fallback mechanism)
-      // Polar checkout açıldıktan sonra credits'i poll et
-      console.log('🔄 Starting background credits polling...');
-      startCreditsPolling();
+  try {
+    const result = await openCheckout(
+      plan.polarProductId,
+      {
+        id: plan.id,
+        name: plan.name,
+        price: plan.price,
+        credits: plan.credits
+      },
+      user.id
+    );
 
-      // ✅ Polar success event listener (eğer Polar event gönderiyorsa)
-      if (result.checkout) {
-        result.checkout.addEventListener('success', async () => {
-          console.log('🎉 Polar success event received!');
-          
-          stopCreditsPolling(); // Polling'i durdur
-          
-          // Credits'i refresh et
-          await refreshCredits();
-          
-          // 1.5 saniye sonra modal kapat
-          setTimeout(() => {
-            console.log('🎉 Closing modal after Polar success event');
-            onClose();
-          }, 1500);
-        });
-      }
+    console.log('📦 Checkout result:', result);
 
-    } catch (err) {
-      console.error('❌ Payment error:', err);
-      alert('Payment error: ' + err.message);
-      stopCreditsPolling(); // Hata durumunda polling durdur
+    // ✅ HER DURUMDA POLLING BAŞLAT
+    console.log('🔄 Starting background credits polling...');
+    startCreditsPolling();
+
+    // Event listener varsa ekle
+    if (result?.checkout?.addEventListener) {
+      result.checkout.addEventListener('success', async () => {
+        console.log('🎉 Polar success event received!');
+        stopCreditsPolling();
+        await refreshCredits();
+        setTimeout(() => onClose(), 1500);
+      });
     }
-  };
+
+  } catch (err) {
+    console.error('❌ Payment error:', err);
+    // Hata olsa bile polling başlat
+    console.log('🔄 Starting polling despite error...');
+    startCreditsPolling();
+  }
+};
 
   const getTitle = () => {
     switch (reason) {

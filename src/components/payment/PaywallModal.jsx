@@ -77,7 +77,7 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
 
   if (!isOpen) return null;
 
-  const handlePurchase = async (plan) => {
+ const handlePurchase = (plan) => { // ✅ async kaldırıldı!
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('💳 PURCHASE HANDLER CALLED');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -85,8 +85,10 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
   console.log('User:', user);
   console.log('Is Anonymous:', isAnonymous);
   
+  // ANONYMOUS USER CHECK
   if (isAnonymous) {
     console.log('🔄 Anonymous user detected - redirecting to register');
+    
     navigate('/register', {
       state: {
         returnUrl: '/',
@@ -100,45 +102,50 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
         message: 'Create an account to purchase credits'
       }
     });
+    
     onClose();
     return;
   }
 
   console.log('✅ Registered user - proceeding with payment');
 
-  try {
-    const result = await openCheckout(
-      plan.polarProductId,
-      {
-        id: plan.id,
-        name: plan.name,
-        price: plan.price,
-        credits: plan.credits
-      },
-      user.id
-    );
+  // ✅ openCheckout'u çağır ama BEKLEME!
+  const checkoutPromise = openCheckout(
+    plan.polarProductId,
+    {
+      id: plan.id,
+      name: plan.name,
+      price: plan.price,
+      credits: plan.credits
+    },
+    user.id
+  );
 
-    console.log('📦 Checkout result:', result);
+  // ✅ HEMEN POLLING BAŞLAT
+  console.log('🔄 Starting background credits polling immediately...');
+  startCreditsPolling();
 
-    // ✅ HER DURUMDA POLLING BAŞLAT
-    console.log('🔄 Starting background credits polling...');
-    startCreditsPolling();
-
-    // Event listener varsa ekle
-    if (result?.checkout?.addEventListener) {
-      result.checkout.addEventListener('success', async () => {
-        console.log('🎉 Polar success event received!');
-        stopCreditsPolling();
-        await refreshCredits();
-        setTimeout(() => onClose(), 1500);
+  // ✅ Checkout result'u background'da handle et
+  if (checkoutPromise && typeof checkoutPromise.then === 'function') {
+    checkoutPromise
+      .then(result => {
+        console.log('📦 Checkout result (async):', result);
+        
+        // Event listener varsa ekle
+        if (result?.checkout?.addEventListener) {
+          console.log('✅ Adding success event listener');
+          result.checkout.addEventListener('success', async () => {
+            console.log('🎉 Polar success event received!');
+            stopCreditsPolling();
+            await refreshCredits();
+            setTimeout(() => onClose(), 1500);
+          });
+        }
+      })
+      .catch(err => {
+        console.error('❌ Checkout error (async):', err);
+        // Polling zaten çalışıyor, sorun yok
       });
-    }
-
-  } catch (err) {
-    console.error('❌ Payment error:', err);
-    // Hata olsa bile polling başlat
-    console.log('🔄 Starting polling despite error...');
-    startCreditsPolling();
   }
 };
 

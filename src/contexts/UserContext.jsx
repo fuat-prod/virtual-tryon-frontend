@@ -325,50 +325,63 @@ export function UserProvider({ children }) {
   };
 
   /**
-   * ✅ YENİ: Credits'i güncelle (payment sonrası)
-   */
-  const refreshCredits = async () => {
-    if (!user?.id) {
-      console.warn('⚠️ No user ID, cannot refresh credits');
-      return false;
+ * ✅ DÜZELTME: Credits'i güncelle (payment sonrası) - Backend API kullan
+ */
+const refreshCredits = async () => {
+  if (!user?.id) {
+    console.warn('⚠️ No user ID, cannot refresh credits');
+    return false;
+  }
+
+  console.log('🔄 Refreshing user credits...');
+  console.log('   User ID:', user.id);
+  setRefreshing(true);
+
+  try {
+    // ✅ Backend API'den fetch (RLS policy bypass)
+    const response = await fetch(`${API_URL}/api/auth/user/${user.id}`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ HTTP Error:', response.status, errorText);
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    console.log('🔄 Refreshing user credits...');
-    setRefreshing(true);
+    const result = await response.json();
+    console.log('📦 API Response:', result);
 
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('credits, last_payment_at')
-        .eq('id', user.id)
-        .single();
-
-      if (error) {
-        console.error('❌ Error refreshing credits:', error);
-        throw error;
-      }
-
-      if (data) {
-        console.log('✅ Credits refreshed:', data.credits);
-        
-        const updatedUser = {
-          ...user,
-          credits: data.credits,
-          last_payment_at: data.last_payment_at
-        };
-        
-        setUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        
-        return true;
-      }
-    } catch (error) {
-      console.error('❌ Failed to refresh credits:', error);
-      return false;
-    } finally {
-      setRefreshing(false);
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to fetch user');
     }
-  };
+
+    const data = result.user;
+
+    if (data && data.credits !== undefined) {
+      console.log('✅ Credits refreshed successfully');
+      console.log(`   Old: ${user.credits} → New: ${data.credits}`);
+      
+      const updatedUser = {
+        ...user,
+        credits: data.credits,
+        last_payment_at: data.last_payment_at || user.last_payment_at,
+        updated_at: data.updated_at || new Date().toISOString()
+      };
+      
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      
+      return true;
+    } else {
+      console.warn('⚠️ No credits data in response');
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Failed to refresh credits:', error.message);
+    return false;
+  } finally {
+    setRefreshing(false);
+  }
+};
 
   /**
    * User credits'i güncelle (lokal)

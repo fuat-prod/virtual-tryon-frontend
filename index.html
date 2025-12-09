@@ -15,8 +15,14 @@
     
     <title>DressAI - Virtual Try-On</title>
 
-    <!-- Paddle.js Script -->
-    <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+    <!-- ✅ YENİ: Eruda Console (Mobile Debug) -->
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>
+      // Sadece mobile veya development'ta göster
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.location.hostname === 'localhost') {
+        eruda.init();
+      }
+    </script>
 
   </head>
 

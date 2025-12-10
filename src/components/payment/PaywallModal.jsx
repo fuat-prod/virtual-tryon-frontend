@@ -83,40 +83,20 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('Plan:', plan);
   console.log('User:', user);
-  console.log('Session:', session);
   console.log('Is Anonymous:', isAnonymous);
-  console.log('Is Authenticated:', isAuthenticated);
   
-  // ✅ GÜÇLÜ AUTH CHECK - Session + isAuthenticated + user.is_anonymous
-  const isUserAuthenticated = session || isAuthenticated || (user && !user.is_anonymous);
-  
-  console.log('✅ Final auth check:', isUserAuthenticated);
-  
-  // ✅ Sadece kesinlikle anonymous ise redirect et
-  if (!isUserAuthenticated) {
-    console.log('🔄 Anonymous/unauthenticated user - redirecting to register');
-    
-    navigate('/register', {
-      state: {
-        returnUrl: '/',
-        selectedPlan: {
-          id: plan.id,
-          name: plan.name,
-          price: plan.price,
-          credits: plan.credits,
-          polarProductId: plan.polarProductId
-        },
-        message: 'Create an account to purchase credits'
-      }
-    });
-    
-    onClose();
+  // ✅ User check (user.id olmalı)
+  if (!user || !user.id) {
+    console.error('❌ No user ID found');
+    alert('Error: User session not found. Please refresh the page.');
     return;
   }
 
-  console.log('✅ Authenticated user - proceeding with payment');
+  console.log('✅ Proceeding with payment');
+  console.log('   User ID:', user.id);
+  console.log('   Anonymous:', isAnonymous);
 
-  // ✅ openCheckout ve polling (mevcut kod aynı kalır)
+  // ✅ Anonymous veya registered fark etmez, direkt checkout
   const checkoutPromise = openCheckout(
     plan.polarProductId,
     {

@@ -32,22 +32,25 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
     }
   }, [isOpen, user]);
 
-  // ✅ YENİ: Credits polling fonksiyonu
-  const startCreditsPolling = () => {
-    console.log('🔄 Starting credits polling...');
-    
-    let pollCount = 0;
-    const maxPolls = 20; // 20 * 3 = 60 saniye max
+ // ✅ YENİ: Credits polling fonksiyonu
+const startCreditsPolling = () => {
+  console.log('🔄 Starting credits polling...');
+  
+  let pollCount = 0;
+  const maxPolls = 20; // 20 * 3 = 60 saniye max
 
-    pollIntervalRef.current = setInterval(async () => {
-      pollCount++;
-      console.log(`📊 Polling credits... (${pollCount}/${maxPolls})`);
+  pollIntervalRef.current = setInterval(async () => {
+    pollCount++;
+    console.log(`📊 Polling credits... (${pollCount}/${maxPolls})`);
 
-      const success = await refreshCredits();
+    // ✅ DÜZELTME: result'tan credits al
+    const result = await refreshCredits();
 
-      if (success && user && user.credits > initialCreditsRef.current) {
+    if (result.success && result.credits !== null) {
+      // ✅ Dönen credits'i initial ile karşılaştır
+      if (result.credits > initialCreditsRef.current) {
         console.log('✅ Credits updated detected!');
-        console.log(`   ${initialCreditsRef.current} → ${user.credits}`);
+        console.log(`   ${initialCreditsRef.current} → ${result.credits}`);
         
         stopCreditsPolling();
         
@@ -57,14 +60,15 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
           onClose();
         }, 1500);
       }
+    }
 
-      // Max polling reached
-      if (pollCount >= maxPolls) {
-        console.log('⏱️ Max polling reached, stopping...');
-        stopCreditsPolling();
-      }
-    }, 3000); // Her 3 saniyede bir kontrol
-  };
+    // Max polling reached
+    if (pollCount >= maxPolls) {
+      console.log('⏱️ Max polling reached, stopping...');
+      stopCreditsPolling();
+    }
+  }, 3000); // Her 3 saniyede bir
+};
 
   // ✅ YENİ: Polling durdur
   const stopCreditsPolling = () => {

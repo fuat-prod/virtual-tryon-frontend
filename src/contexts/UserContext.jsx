@@ -324,13 +324,13 @@ export function UserProvider({ children }) {
     }
   };
 
-  /**
- * ✅ DÜZELTME: Credits'i güncelle (payment sonrası) - Backend API kullan
+ /**
+ * ✅ Credits'i güncelle ve yeni credits değerini DÖNDÜR
  */
 const refreshCredits = async () => {
   if (!user?.id) {
     console.warn('⚠️ No user ID, cannot refresh credits');
-    return false;
+    return { success: false, credits: null };
   }
 
   console.log('🔄 Refreshing user credits...');
@@ -338,17 +338,13 @@ const refreshCredits = async () => {
   setRefreshing(true);
 
   try {
-    // ✅ Backend API'den fetch (RLS policy bypass)
     const response = await fetch(`${API_URL}/api/auth/user/${user.id}`);
     
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ HTTP Error:', response.status, errorText);
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      throw new Error(`HTTP ${response.status}`);
     }
 
     const result = await response.json();
-    console.log('📦 API Response:', result);
 
     if (!result.success) {
       throw new Error(result.error || 'Failed to fetch user');
@@ -370,14 +366,15 @@ const refreshCredits = async () => {
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
       
-      return true;
+      // ✅ YENİ: credits değerini döndür
+      return { success: true, credits: data.credits };
     } else {
       console.warn('⚠️ No credits data in response');
-      return false;
+      return { success: false, credits: null };
     }
   } catch (error) {
     console.error('❌ Failed to refresh credits:', error.message);
-    return false;
+    return { success: false, credits: null };
   } finally {
     setRefreshing(false);
   }

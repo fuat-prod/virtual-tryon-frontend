@@ -32,29 +32,32 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
     }
   }, [isOpen, user]);
 
- // ✅ YENİ: Credits polling fonksiyonu
-const startCreditsPolling = () => {
+ 
+ const startCreditsPolling = () => {
   console.log('🔄 Starting credits polling...');
   
   let pollCount = 0;
-  const maxPolls = 20; // 20 * 3 = 60 saniye max
+  const maxPolls = 20;
 
   pollIntervalRef.current = setInterval(async () => {
     pollCount++;
     console.log(`📊 Polling credits... (${pollCount}/${maxPolls})`);
 
-    // ✅ DÜZELTME: result'tan credits al
     const result = await refreshCredits();
 
     if (result.success && result.credits !== null) {
-      // ✅ Dönen credits'i initial ile karşılaştır
       if (result.credits > initialCreditsRef.current) {
         console.log('✅ Credits updated detected!');
         console.log(`   ${initialCreditsRef.current} → ${result.credits}`);
         
         stopCreditsPolling();
         
-        // 1.5 saniye sonra modal kapat
+        // ✅ YENİ: Polar iframe'i kapat
+        if (window._closePolarCheckout) {
+          console.log('🔄 Closing Polar checkout iframe...');
+          window._closePolarCheckout();
+        }
+        
         setTimeout(() => {
           console.log('🎉 Closing modal after successful payment');
           onClose();
@@ -62,12 +65,11 @@ const startCreditsPolling = () => {
       }
     }
 
-    // Max polling reached
     if (pollCount >= maxPolls) {
       console.log('⏱️ Max polling reached, stopping...');
       stopCreditsPolling();
     }
-  }, 3000); // Her 3 saniyede bir
+  }, 3000);
 };
 
   // ✅ YENİ: Polling durdur
@@ -81,15 +83,13 @@ const startCreditsPolling = () => {
 
   if (!isOpen) return null;
 
- const handlePurchase = (plan) => {
+ // PaywallModal.jsx - handlePurchase
+
+const handlePurchase = (plan) => {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('💳 PURCHASE HANDLER CALLED');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('Plan:', plan);
-  console.log('User:', user);
-  console.log('Is Anonymous:', isAnonymous);
   
-  // ✅ User check (user.id olmalı)
   if (!user || !user.id) {
     console.error('❌ No user ID found');
     alert('Error: User session not found. Please refresh the page.');
@@ -100,7 +100,6 @@ const startCreditsPolling = () => {
   console.log('   User ID:', user.id);
   console.log('   Anonymous:', isAnonymous);
 
-  // ✅ Anonymous veya registered fark etmez, direkt checkout
   const checkoutPromise = openCheckout(
     plan.polarProductId,
     {
@@ -120,12 +119,21 @@ const startCreditsPolling = () => {
       .then(result => {
         console.log('📦 Checkout result (async):', result);
         
+        // ✅ YENİ: closePolarIframe fonksiyonunu kaydet
+        window._closePolarCheckout = result.closePolarIframe;
+        
         if (result?.checkout?.addEventListener) {
           console.log('✅ Adding success event listener');
           result.checkout.addEventListener('success', async () => {
             console.log('🎉 Polar success event received!');
             stopCreditsPolling();
             await refreshCredits();
+            
+            // Checkout kapat
+            if (result.closePolarIframe) {
+              result.closePolarIframe();
+            }
+            
             setTimeout(() => onClose(), 1500);
           });
         }

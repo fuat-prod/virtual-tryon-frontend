@@ -76,16 +76,29 @@ export function usePolar() {
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('Event:', event);
         
-        // Unlock scroll
-        if (isMobile) {
-          document.body.style.overflow = '';
-          document.body.style.position = '';
-          document.body.style.width = '';
-          document.body.style.height = '';
-          console.log('🔓 Mobile scroll unlocked');
-        }
-        
-        setIsLoading(false);
+        // ✅ YENİ: Kısa delay sonra checkout'u kapat
+        setTimeout(() => {
+          console.log('✅ Closing checkout after success...');
+          
+          // Unlock scroll
+          if (isMobile) {
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
+            document.body.style.height = '';
+            console.log('🔓 Mobile scroll unlocked');
+          }
+          
+          // ✅ CHECKOUT'U KAPAT
+          try {
+            checkout.close();
+            console.log('✅ Checkout closed successfully');
+          } catch (err) {
+            console.error('⚠️ Error closing checkout:', err);
+          }
+          
+          setIsLoading(false);
+        }, 1500); // 1.5 saniye sonra kapat (success mesajını görsün)
       });
 
       // Close event

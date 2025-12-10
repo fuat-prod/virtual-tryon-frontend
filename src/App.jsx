@@ -7,7 +7,8 @@ import VirtualTryOnPage from './pages/VirtualTryOnPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
-import PaymentSuccess from './pages/PaymentSuccess'; // ✅ EKLENEN SATIR!
+import PaymentSuccess from './pages/PaymentSuccess'; 
+import ProfilePage from './pages/ProfilePage'; // ✅ YENİ
 
 // Legal Pages
 import TermsOfService from './pages/legal/TermsOfService';
@@ -59,6 +60,16 @@ function App() {
             element={<ForgotPassword />} 
           />
           
+         {/* ✅ YENİ: Profile Page (Authenticated Users Only) */}
+          <Route 
+            path="/profile" 
+            element={
+              <ProtectedRoute requireAuth={true}>
+                <ProfilePage />
+              </ProtectedRoute>
+            } 
+          />
+
           {/* ✅ PAYMENT SUCCESS ROUTE */}
           <Route 
             path="/payment/success" 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PRICING_PLANS } from '../../config/pricing';
 import { usePolar } from '../../hooks/usePolar';
@@ -7,24 +7,36 @@ import { useUser } from '../../contexts/UserContext';
 
 export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' }) {
   const [selectedPlan, setSelectedPlan] = useState('monthly');
-  const { user, session, isAnonymous, isAuthenticated, refreshUser, refreshCredits, refreshing } = useUser(); // ✅ refreshCredits, refreshing ekle
+  
+  // ✅ YENİ: Soft prompt states
+  const [showSoftPrompt, setShowSoftPrompt] = useState(false);
+  const [email, setEmail] = useState('');
+  const [isSavingAccount, setIsSavingAccount] = useState(false);
+  const [saveAccountError, setSaveAccountError] = useState(null);
+  
+  const { user, session, isAnonymous, isAuthenticated, refreshUser, refreshCredits, refreshing } = useUser();
   const { openCheckout, isLoading, error } = usePolar();
   const navigate = useNavigate();
   
-  const pollIntervalRef = useRef(null); // ✅ YENİ: Polling interval ref
-  const initialCreditsRef = useRef(null); // ✅ YENİ: Initial credits ref
+  const pollIntervalRef = useRef(null);
+  const initialCreditsRef = useRef(null);
+  
+  const API_URL = import.meta.env.VITE_API_URL;
 
-  // ✅ YENİ: Cleanup - modal kapanınca polling durdur
+  // ✅ Cleanup
   useEffect(() => {
     if (!isOpen) {
       stopCreditsPolling();
+      setShowSoftPrompt(false);
+      setEmail('');
+      setSaveAccountError(null);
     }
     return () => {
       stopCreditsPolling();
     };
   }, [isOpen]);
 
-  // ✅ YENİ: Initial credits kaydet
+  // ✅ Initial credits kaydet
   useEffect(() => {
     if (isOpen && user) {
       initialCreditsRef.current = user.credits;
@@ -32,47 +44,55 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
     }
   }, [isOpen, user]);
 
- 
- const startCreditsPolling = () => {
-  console.log('🔄 Starting credits polling...');
-  
-  let pollCount = 0;
-  const maxPolls = 20;
+  // ✅ Credits polling
+  const startCreditsPolling = () => {
+    console.log('🔄 Starting credits polling...');
+    
+    let pollCount = 0;
+    const maxPolls = 20;
 
-  pollIntervalRef.current = setInterval(async () => {
-    pollCount++;
-    console.log(`📊 Polling credits... (${pollCount}/${maxPolls})`);
+    pollIntervalRef.current = setInterval(async () => {
+      pollCount++;
+      console.log(`📊 Polling credits... (${pollCount}/${maxPolls})`);
 
-    const result = await refreshCredits();
+      const result = await refreshCredits();
 
-    if (result.success && result.credits !== null) {
-      if (result.credits > initialCreditsRef.current) {
-        console.log('✅ Credits updated detected!');
-        console.log(`   ${initialCreditsRef.current} → ${result.credits}`);
-        
-        stopCreditsPolling();
-        
-        // ✅ YENİ: Polar iframe'i kapat
-        if (window._closePolarCheckout) {
-          console.log('🔄 Closing Polar checkout iframe...');
-          window._closePolarCheckout();
+      if (result.success && result.credits !== null) {
+        if (result.credits > initialCreditsRef.current) {
+          console.log('✅ Credits updated detected!');
+          console.log(`   ${initialCreditsRef.current} → ${result.credits}`);
+          
+          stopCreditsPolling();
+          
+          // ✅ Polar iframe'i kapat
+          if (window._closePolarCheckout) {
+            console.log('🔄 Closing Polar checkout iframe...');
+            window._closePolarCheckout();
+          }
+          
+          // ✅ YENİ: User hala anonymous ise soft prompt göster
+          await refreshUser(); // User bilgisini güncelle
+          
+          setTimeout(() => {
+            if (user?.is_anonymous) {
+              console.log('💡 Showing soft prompt for anonymous user');
+              setShowSoftPrompt(true);
+            } else {
+              console.log('🎉 Closing modal (user is authenticated)');
+              onClose();
+            }
+          }, 1000);
         }
-        
-        setTimeout(() => {
-          console.log('🎉 Closing modal after successful payment');
-          onClose();
-        }, 1500);
       }
-    }
 
-    if (pollCount >= maxPolls) {
-      console.log('⏱️ Max polling reached, stopping...');
-      stopCreditsPolling();
-    }
-  }, 3000);
-};
+      if (pollCount >= maxPolls) {
+        console.log('⏱️ Max polling reached, stopping...');
+        stopCreditsPolling();
+      }
+    }, 3000);
+  };
 
-  // ✅ YENİ: Polling durdur
+  // ✅ Polling durdur
   const stopCreditsPolling = () => {
     if (pollIntervalRef.current) {
       console.log('🛑 Stopping credits polling');
@@ -81,68 +101,112 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
     }
   };
 
-  if (!isOpen) return null;
+  // ✅ YENİ: Save account handler (soft prompt)
+  const handleSaveAccount = async () => {
+    if (!email || !email.includes('@')) {
+      setSaveAccountError('Please enter a valid email');
+      return;
+    }
 
- // PaywallModal.jsx - handlePurchase
+    setIsSavingAccount(true);
+    setSaveAccountError(null);
 
-const handlePurchase = (plan) => {
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('💳 PURCHASE HANDLER CALLED');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  
-  if (!user || !user.id) {
-    console.error('❌ No user ID found');
-    alert('Error: User session not found. Please refresh the page.');
-    return;
-  }
+    try {
+      console.log('💾 Saving account with email:', email);
 
-  console.log('✅ Proceeding with payment');
-  console.log('   User ID:', user.id);
-  console.log('   Anonymous:', isAnonymous);
-
-  const checkoutPromise = openCheckout(
-    plan.polarProductId,
-    {
-      id: plan.id,
-      name: plan.name,
-      price: plan.price,
-      credits: plan.credits
-    },
-    user.id
-  );
-
-  console.log('🔄 Starting background credits polling immediately...');
-  startCreditsPolling();
-
-  if (checkoutPromise && typeof checkoutPromise.then === 'function') {
-    checkoutPromise
-      .then(result => {
-        console.log('📦 Checkout result (async):', result);
-        
-        // ✅ YENİ: closePolarIframe fonksiyonunu kaydet
-        window._closePolarCheckout = result.closePolarIframe;
-        
-        if (result?.checkout?.addEventListener) {
-          console.log('✅ Adding success event listener');
-          result.checkout.addEventListener('success', async () => {
-            console.log('🎉 Polar success event received!');
-            stopCreditsPolling();
-            await refreshCredits();
-            
-            // Checkout kapat
-            if (result.closePolarIframe) {
-              result.closePolarIframe();
-            }
-            
-            setTimeout(() => onClose(), 1500);
-          });
-        }
-      })
-      .catch(err => {
-        console.error('❌ Checkout error (async):', err);
+      const response = await fetch(`${API_URL}/api/auth/save-account`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          anonymousUserId: user.id
+        })
       });
-  }
-};
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log('✅ Account saved successfully');
+        
+        // User bilgisini refresh et
+        await refreshUser();
+        
+        // Success mesajı
+        setTimeout(() => {
+          setShowSoftPrompt(false);
+          onClose();
+          
+          // Optional: Toast notification
+          // toast.success('Account saved! Check your email to set password');
+        }, 1000);
+      } else {
+        setSaveAccountError(data.error || 'Failed to save account');
+      }
+    } catch (error) {
+      console.error('Save account error:', error);
+      setSaveAccountError('Something went wrong. Please try again.');
+    } finally {
+      setIsSavingAccount(false);
+    }
+  };
+
+  // ✅ Handle purchase
+  const handlePurchase = (plan) => {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('💳 PURCHASE HANDLER CALLED');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    if (!user || !user.id) {
+      console.error('❌ No user ID found');
+      alert('Error: User session not found. Please refresh the page.');
+      return;
+    }
+
+    console.log('✅ Proceeding with payment');
+    console.log('   User ID:', user.id);
+    console.log('   Anonymous:', isAnonymous);
+
+    const checkoutPromise = openCheckout(
+      plan.polarProductId,
+      {
+        id: plan.id,
+        name: plan.name,
+        price: plan.price,
+        credits: plan.credits
+      },
+      user.id
+    );
+
+    console.log('🔄 Starting background credits polling immediately...');
+    startCreditsPolling();
+
+    if (checkoutPromise && typeof checkoutPromise.then === 'function') {
+      checkoutPromise
+        .then(result => {
+          console.log('📦 Checkout result (async):', result);
+          
+          window._closePolarCheckout = result.closePolarIframe;
+          
+          if (result?.checkout?.addEventListener) {
+            console.log('✅ Adding success event listener');
+            result.checkout.addEventListener('success', async () => {
+              console.log('🎉 Polar success event received!');
+              stopCreditsPolling();
+              await refreshCredits();
+              
+              if (result.closePolarIframe) {
+                result.closePolarIframe();
+              }
+              
+              setTimeout(() => onClose(), 1500);
+            });
+          }
+        })
+        .catch(err => {
+          console.error('❌ Checkout error (async):', err);
+        });
+    }
+  };
 
   const getTitle = () => {
     switch (reason) {
@@ -166,13 +230,100 @@ const handlePurchase = (plan) => {
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <>
-      {/* Main Modal */}
+      {/* ✅ YENİ: Soft Prompt Modal (Payment sonrası) */}
+      {showSoftPrompt && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 sm:p-8">
+            
+            {/* Success Icon */}
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
+              🎉 Credits Added!
+            </h3>
+            
+            <p className="text-gray-600 text-center mb-6">
+              Want to access your credits from any device?
+            </p>
+
+            {/* Email Input */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setSaveAccountError(null);
+                  }}
+                  placeholder="your@email.com"
+                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  disabled={isSavingAccount}
+                />
+              </div>
+              {saveAccountError && (
+                <p className="mt-2 text-sm text-red-600">
+                  {saveAccountError}
+                </p>
+              )}
+            </div>
+
+            {/* Save Button */}
+            <button
+              onClick={handleSaveAccount}
+              disabled={isSavingAccount || !email}
+              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 rounded-lg font-semibold mb-3 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSavingAccount ? (
+                <span className="flex items-center justify-center">
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Saving...
+                </span>
+              ) : (
+                'Save My Account'
+              )}
+            </button>
+
+            {/* Maybe Later */}
+            <button
+              onClick={() => {
+                setShowSoftPrompt(false);
+                onClose();
+              }}
+              disabled={isSavingAccount}
+              className="w-full text-gray-600 hover:text-gray-900 py-2 text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              Maybe later
+            </button>
+
+            {/* Info Text */}
+            <p className="text-xs text-gray-500 text-center mt-4">
+              No bonus credits - just secure your account and access from any device
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Main Paywall Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
         <div className="relative w-full max-w-6xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl">
           
-          {/* Close Button - iOS Optimized */}
+          {/* Close Button */}
           <button
             onClick={onClose}
             disabled={isLoading || refreshing}
@@ -200,7 +351,7 @@ const handlePurchase = (plan) => {
               </div>
             )}
 
-            {/* ✅ YENİ: Refreshing Credits Indicator */}
+            {/* Refreshing Credits Indicator */}
             {refreshing && (
               <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-white/30 backdrop-blur-sm rounded-lg">
                 <Loader2 className="w-4 h-4 animate-spin text-white" />
@@ -270,7 +421,7 @@ const handlePurchase = (plan) => {
                     ))}
                   </ul>
 
-                  {/* Select Button - iOS Optimized */}
+                  {/* Select Button */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -289,7 +440,7 @@ const handlePurchase = (plan) => {
               ))}
             </div>
 
-            {/* Purchase Button - iOS Optimized */}
+            {/* Purchase Button */}
             <div className="mt-6 sm:mt-8 text-center">
               <button
                 onClick={() => {
@@ -349,7 +500,7 @@ const handlePurchase = (plan) => {
         </div>
       </div>
 
-      {/* Loading Overlay - Mobile Optimized */}
+      {/* Loading Overlay */}
       {isLoading && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="bg-white rounded-2xl p-6 sm:p-8 text-center max-w-sm mx-4 shadow-2xl">

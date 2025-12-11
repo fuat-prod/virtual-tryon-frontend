@@ -8,7 +8,7 @@ export function UserProvider({ children }) {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false); // ✅ YENİ
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -303,11 +303,21 @@ export function UserProvider({ children }) {
   };
 
   /**
-   * User bilgilerini güncelle (backend'den)
+   * ✅ User bilgilerini güncelle (backend'den)
    */
-  const refreshUser = async (userId) => {
+  const refreshUser = async (userId = null) => {
     try {
-      const response = await fetch(`${API_URL}/api/auth/user/${userId}`);
+      const targetUserId = userId || user?.id;
+      
+      if (!targetUserId) {
+        console.warn('⚠️ No user ID to refresh');
+        return { success: false };
+      }
+      
+      console.log('🔄 Refreshing user data...');
+      console.log('   User ID:', targetUserId);
+      
+      const response = await fetch(`${API_URL}/api/auth/user/${targetUserId}`);
       
       if (!response.ok) {
         throw new Error('Failed to refresh user');
@@ -315,70 +325,82 @@ export function UserProvider({ children }) {
 
       const data = await response.json();
 
-      if (data.success) {
+      if (data.success && data.user) {
+        console.log('✅ User data refreshed');
+        console.log('   Email:', data.user.email || 'N/A');
+        console.log('   Anonymous:', data.user.is_anonymous);
+        console.log('   Credits:', data.user.credits);
+        
         setUser(data.user);
         localStorage.setItem('user', JSON.stringify(data.user));
+        
+        return { success: true, user: data.user };
+      } else {
+        console.warn('⚠️ No user data in response');
+        return { success: false };
       }
     } catch (err) {
-      console.error('Refresh user error:', err);
+      console.error('❌ Refresh user error:', err);
+      return { success: false };
     }
   };
 
- /**
- * ✅ Credits'i güncelle ve yeni credits değerini DÖNDÜR
- */
-const refreshCredits = async () => {
-  if (!user?.id) {
-    console.warn('⚠️ No user ID, cannot refresh credits');
-    return { success: false, credits: null };
-  }
-
-  console.log('🔄 Refreshing user credits...');
-  console.log('   User ID:', user.id);
-  setRefreshing(true);
-
-  try {
-    const response = await fetch(`${API_URL}/api/auth/user/${user.id}`);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const result = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to fetch user');
-    }
-
-    const data = result.user;
-
-    if (data && data.credits !== undefined) {
-      console.log('✅ Credits refreshed successfully');
-      console.log(`   Old: ${user.credits} → New: ${data.credits}`);
-      
-      const updatedUser = {
-        ...user,
-        credits: data.credits,
-        last_payment_at: data.last_payment_at || user.last_payment_at,
-        updated_at: data.updated_at || new Date().toISOString()
-      };
-      
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      
-      // ✅ YENİ: credits değerini döndür
-      return { success: true, credits: data.credits };
-    } else {
-      console.warn('⚠️ No credits data in response');
+  /**
+   * ✅ Credits'i güncelle ve yeni credits değerini DÖNDÜR
+   */
+  const refreshCredits = async () => {
+    if (!user?.id) {
+      console.warn('⚠️ No user ID, cannot refresh credits');
       return { success: false, credits: null };
     }
-  } catch (error) {
-    console.error('❌ Failed to refresh credits:', error.message);
-    return { success: false, credits: null };
-  } finally {
-    setRefreshing(false);
-  }
-};
+
+    console.log('🔄 Refreshing user credits...');
+    console.log('   User ID:', user.id);
+    setRefreshing(true);
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/user/${user.id}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to fetch user');
+      }
+
+      const data = result.user;
+
+      if (data && data.credits !== undefined) {
+        console.log('✅ Credits refreshed successfully');
+        console.log(`   Old: ${user.credits} → New: ${data.credits}`);
+        
+        const updatedUser = {
+          ...user,
+          credits: data.credits,
+          email: data.email || user.email, // ✅ Email'i de güncelle
+          is_anonymous: data.is_anonymous, // ✅ Anonymous status'u da güncelle
+          last_payment_at: data.last_payment_at || user.last_payment_at,
+          updated_at: data.updated_at || new Date().toISOString()
+        };
+        
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        
+        return { success: true, credits: data.credits };
+      } else {
+        console.warn('⚠️ No credits data in response');
+        return { success: false, credits: null };
+      }
+    } catch (error) {
+      console.error('❌ Failed to refresh credits:', error.message);
+      return { success: false, credits: null };
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   /**
    * User credits'i güncelle (lokal)
@@ -455,7 +477,7 @@ const refreshCredits = async () => {
     user,
     session,
     loading,
-    refreshing, // ✅ YENİ
+    refreshing,
     error,
     registerWithEmail,
     loginWithEmail,
@@ -463,14 +485,16 @@ const refreshCredits = async () => {
     migrateAnonymousToAuth,
     sendPasswordReset,
     refreshUser,
-    refreshCredits, // ✅ YENİ
+    refreshCredits,
     updateUserCredits,
     useFreeTrialLocally,
     logout,
     hasFreeTrial: user ? user.free_trials_used < user.free_trials_limit : false,
     hasCredits: user ? user.credits > 0 : false,
     isAnonymous: user ? user.is_anonymous : true,
-    isAuthenticated: !!(session && user && !user.is_anonymous)
+    
+    // ✅ FIX: Session olmadan da authenticated olabilir (webhook auto-migrate)
+    isAuthenticated: !!(user && !user.is_anonymous && user.email)
   };
 
   return (

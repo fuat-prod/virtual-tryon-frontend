@@ -8,7 +8,7 @@ import { useUser } from '../../contexts/UserContext';
 export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' }) {
   const [selectedPlan, setSelectedPlan] = useState('monthly');
   
-  // ✅ YENİ: Soft prompt states
+  // ✅ Soft prompt states
   const [showSoftPrompt, setShowSoftPrompt] = useState(false);
   const [email, setEmail] = useState('');
   const [isSavingAccount, setIsSavingAccount] = useState(false);
@@ -23,13 +23,60 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
   
   const API_URL = import.meta.env.VITE_API_URL;
 
-  // ✅ Cleanup
+  // ✅ Global cleanup function
+  useEffect(() => {
+    window._cleanupPolarCheckout = () => {
+      console.log('🧹 Global cleanup called');
+      
+      // Remove all polar-related elements
+      const selectors = [
+        'iframe[src*="polar"]',
+        'iframe[src*="stripe"]',
+        '[id*="polar"]',
+        '[class*="polar"]',
+        'div[style*="z-index: 2147483647"]',
+        'div[style*="position: fixed"][style*="z-index"]'
+      ];
+      
+      selectors.forEach(selector => {
+        document.querySelectorAll(selector).forEach(el => {
+          if (!el.closest('#root')) {
+            el.remove();
+          }
+        });
+      });
+      
+      // Reset body
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.height = '';
+      
+      console.log('✅ Global cleanup done');
+    };
+    
+    return () => {
+      delete window._cleanupPolarCheckout;
+    };
+  }, []);
+
+  // ✅ Cleanup on modal close
   useEffect(() => {
     if (!isOpen) {
       stopCreditsPolling();
       setShowSoftPrompt(false);
       setEmail('');
       setSaveAccountError(null);
+      
+      // ✅ Aggressive cleanup when modal closes
+      setTimeout(() => {
+        if (window._closePolarCheckout) {
+          window._closePolarCheckout();
+        }
+        if (window._cleanupPolarCheckout) {
+          window._cleanupPolarCheckout();
+        }
+      }, 500);
     }
     return () => {
       stopCreditsPolling();
@@ -44,7 +91,7 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
     }
   }, [isOpen, user]);
 
-  // ✅ Credits polling
+  // ✅ Credits polling with AGGRESSIVE cleanup
   const startCreditsPolling = () => {
     console.log('🔄 Starting credits polling...');
     
@@ -64,24 +111,55 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
           
           stopCreditsPolling();
           
-          // ✅ Polar iframe'i kapat
+          // ✅ AGGRESSIVE POLAR CLEANUP
+          console.log('🧹 Cleaning up Polar checkout...');
+          
+          // Try all methods
           if (window._closePolarCheckout) {
-            console.log('🔄 Closing Polar checkout iframe...');
             window._closePolarCheckout();
           }
           
-          // ✅ YENİ: User hala anonymous ise soft prompt göster
-          await refreshUser(); // User bilgisini güncelle
+          if (window._cleanupPolarCheckout) {
+            window._cleanupPolarCheckout();
+          }
+          
+          // ✅ Force cleanup after 500ms
+          setTimeout(() => {
+            if (window._cleanupPolarCheckout) {
+              console.log('🧹 Force cleanup (delayed)');
+              window._cleanupPolarCheckout();
+            }
+          }, 500);
+          
+          // ✅ User data refresh (WAIT for it)
+          console.log('🔄 Refreshing user data...');
+          await refreshUser();
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // ✅ Fresh user check from API
+          let isStillAnonymous = user?.is_anonymous;
+          
+          try {
+            const userResponse = await fetch(`${API_URL}/api/auth/user/${user.id}`);
+            const userData = await userResponse.json();
+            
+            if (userData.success && userData.user) {
+              isStillAnonymous = userData.user.is_anonymous;
+              console.log('👤 Fresh user data:', userData.user.email ? 'Has email' : 'No email', '| Anonymous:', isStillAnonymous);
+            }
+          } catch (error) {
+            console.error('⚠️ Failed to fetch fresh user data:', error);
+          }
           
           setTimeout(() => {
-            if (user?.is_anonymous) {
+            if (isStillAnonymous) {
               console.log('💡 Showing soft prompt for anonymous user');
               setShowSoftPrompt(true);
             } else {
-              console.log('🎉 Closing modal (user is authenticated)');
-              onClose();
+              console.log('🎉 User is authenticated, closing modal');
+              handleModalClose();
             }
-          }, 1000);
+          }, 500);
         }
       }
 
@@ -101,7 +179,34 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
     }
   };
 
-  // ✅ YENİ: Save account handler (soft prompt)
+  // ✅ Modal close handler with aggressive cleanup
+  const handleModalClose = async () => {
+    console.log('🔒 Closing PaywallModal...');
+    
+    // ✅ AGGRESSIVE CLEANUP
+    console.log('🧹 Final cleanup...');
+    
+    if (window._closePolarCheckout) {
+      window._closePolarCheckout();
+    }
+    
+    if (window._cleanupPolarCheckout) {
+      window._cleanupPolarCheckout();
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // ✅ Final data refresh
+    await refreshUser();
+    await refreshCredits();
+    
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    console.log('✅ Modal closed, user data refreshed');
+    onClose();
+  };
+
+  // ✅ Save account handler
   const handleSaveAccount = async () => {
     if (!email || !email.includes('@')) {
       setSaveAccountError('Please enter a valid email');
@@ -128,16 +233,18 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
       if (data.success) {
         console.log('✅ Account saved successfully');
         
-        // User bilgisini refresh et
+        // ✅ User bilgisini refresh et ve BEKLE
+        console.log('🔄 Refreshing user data after account save...');
         await refreshUser();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await refreshCredits();
         
-        // Success mesajı
+        console.log('✅ User data refreshed');
+        
+        // Success
         setTimeout(() => {
           setShowSoftPrompt(false);
-          onClose();
-          
-          // Optional: Toast notification
-          // toast.success('Account saved! Check your email to set password');
+          handleModalClose();
         }, 1000);
       } else {
         setSaveAccountError(data.error || 'Failed to save account');
@@ -198,7 +305,7 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
                 result.closePolarIframe();
               }
               
-              setTimeout(() => onClose(), 1500);
+              setTimeout(() => handleModalClose(), 1500);
             });
           }
         })
@@ -234,7 +341,7 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
 
   return (
     <>
-      {/* ✅ YENİ: Soft Prompt Modal (Payment sonrası) */}
+      {/* ✅ Soft Prompt Modal */}
       {showSoftPrompt && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 sm:p-8">
@@ -301,9 +408,17 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
 
             {/* Maybe Later */}
             <button
-              onClick={() => {
+              onClick={async () => {
+                console.log('⏭️ User clicked "Maybe later"');
+                
+                // ✅ Final refresh before closing
+                console.log('🔄 Final refresh before closing...');
+                await refreshUser();
+                await refreshCredits();
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
                 setShowSoftPrompt(false);
-                onClose();
+                handleModalClose();
               }}
               disabled={isSavingAccount}
               className="w-full text-gray-600 hover:text-gray-900 py-2 text-sm font-medium transition-colors disabled:opacity-50"
@@ -325,7 +440,7 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
           
           {/* Close Button */}
           <button
-            onClick={onClose}
+            onClick={handleModalClose}
             disabled={isLoading || refreshing}
             className="absolute top-4 right-4 z-10 p-3 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Close"

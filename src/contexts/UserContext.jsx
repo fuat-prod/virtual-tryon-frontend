@@ -345,66 +345,74 @@ export function UserProvider({ children }) {
     }
   };
 
-  /**
-   * ✅ FIX: Credits'i güncelle ve FRESH user data döndür
-   */
-  const refreshCredits = async () => {
-    if (!user?.id) {
-      console.warn('⚠️ No user ID, cannot refresh credits');
-      return { success: false, credits: null, user: null };
+/**
+ * ✅ FIX: Credits'i güncelle ve FORCE re-render
+ */
+const refreshCredits = async () => {
+  if (!user?.id) {
+    console.warn('⚠️ No user ID, cannot refresh credits');
+    return { success: false, credits: null, user: null };
+  }
+
+  console.log('🔄 Refreshing user credits...');
+  console.log('   User ID:', user.id);
+  setRefreshing(true);
+
+  try {
+    const response = await fetch(`${API_URL}/api/auth/user/${user.id}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
 
-    console.log('🔄 Refreshing user credits...');
-    console.log('   User ID:', user.id);
-    setRefreshing(true);
+    const result = await response.json();
 
-    try {
-      const response = await fetch(`${API_URL}/api/auth/user/${user.id}`);
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to fetch user');
+    }
+
+    const freshUserData = result.user;
+
+    if (freshUserData && freshUserData.credits !== undefined) {
+      console.log('✅ User data refreshed successfully');
+      console.log(`   Credits: ${user.credits} → ${freshUserData.credits}`);
+      console.log(`   Email: ${freshUserData.email || 'N/A'}`);
+      console.log(`   Anonymous: ${freshUserData.is_anonymous}`);
       
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch user');
-      }
-
-      const freshUserData = result.user;
-
-      if (freshUserData && freshUserData.credits !== undefined) {
-        console.log('✅ User data refreshed successfully');
-        console.log(`   Credits: ${user.credits} → ${freshUserData.credits}`);
-        console.log(`   Email: ${freshUserData.email || 'N/A'}`);
-        console.log(`   Anonymous: ${freshUserData.is_anonymous}`);
-        
-        // ✅ FIX: Tüm user object'i güncelle
-        const updatedUser = {
-          ...user,
-          ...freshUserData,
-          updated_at: new Date().toISOString()
-        };
-        
-        setUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        
-        return { 
-          success: true, 
-          credits: freshUserData.credits,
-          user: updatedUser
-        };
-      } else {
-        console.warn('⚠️ No user data in response');
-        return { success: false, credits: null, user: null };
-      }
-    } catch (error) {
-      console.error('❌ Failed to refresh credits:', error.message);
+      // ✅ FIX: Completely NEW object to force re-render
+      const updatedUser = {
+        ...freshUserData, // ✅ Backend'den gelen TÜM data
+        updated_at: new Date().toISOString(),
+        _forceUpdate: Date.now() // ✅ Force re-render
+      };
+      
+      // ✅ FIX: Clear old state first
+      setUser(null);
+      
+      // ✅ FIX: Set new state
+      await new Promise(resolve => setTimeout(resolve, 50));
+      setUser(updatedUser);
+      
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      
+      console.log('✅ State updated and saved to localStorage');
+      
+      return { 
+        success: true, 
+        credits: freshUserData.credits,
+        user: updatedUser
+      };
+    } else {
+      console.warn('⚠️ No user data in response');
       return { success: false, credits: null, user: null };
-    } finally {
-      setRefreshing(false);
     }
-  };
+  } catch (error) {
+    console.error('❌ Failed to refresh credits:', error.message);
+    return { success: false, credits: null, user: null };
+  } finally {
+    setRefreshing(false);
+  }
+};
 
   /**
    * User credits'i güncelle (lokal)

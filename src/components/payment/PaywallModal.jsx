@@ -90,102 +90,141 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
     }
   }, [isOpen, user]);
 
-  // ✅ FIX: AGGRESSIVE credits polling with full user state refresh
-  const startCreditsPolling = () => {
-    console.log('🔄 Starting credits polling...');
-    
-    let pollCount = 0;
-    const maxPolls = 20;
+ // ✅ FIX: Credits polling'de TRIPLE CHECK
+const startCreditsPolling = () => {
+  console.log('🔄 Starting credits polling...');
+  
+  let pollCount = 0;
+  const maxPolls = 20;
 
-    pollIntervalRef.current = setInterval(async () => {
-      pollCount++;
-      console.log(`📊 Polling credits... (${pollCount}/${maxPolls})`);
+  pollIntervalRef.current = setInterval(async () => {
+    pollCount++;
+    console.log(`📊 Polling credits... (${pollCount}/${maxPolls})`);
 
-      const result = await refreshCredits(); // ✅ Bu artık user data'yı da döndürüyor
+    const result = await refreshCredits();
 
-      if (result.success && result.credits !== null) {
-        if (result.credits > initialCreditsRef.current) {
-          console.log('✅ Credits updated detected!');
-          console.log(`   ${initialCreditsRef.current} → ${result.credits}`);
-          
-          stopCreditsPolling();
-          
-          // ✅ AGGRESSIVE POLAR CLEANUP
-          console.log('🧹 Cleaning up Polar checkout...');
-          
-          if (window._closePolarCheckout) {
-            window._closePolarCheckout();
-          }
-          
+    if (result.success && result.credits !== null) {
+      if (result.credits > initialCreditsRef.current) {
+        console.log('✅ Credits updated detected!');
+        console.log(`   ${initialCreditsRef.current} → ${result.credits}`);
+        
+        stopCreditsPolling();
+        
+        // ✅ AGGRESSIVE POLAR CLEANUP
+        console.log('🧹 Cleaning up Polar checkout...');
+        
+        if (window._closePolarCheckout) {
+          window._closePolarCheckout();
+        }
+        
+        if (window._cleanupPolarCheckout) {
+          window._cleanupPolarCheckout();
+        }
+        
+        setTimeout(() => {
           if (window._cleanupPolarCheckout) {
+            console.log('🧹 Force cleanup (delayed)');
             window._cleanupPolarCheckout();
           }
-          
-          setTimeout(() => {
-            if (window._cleanupPolarCheckout) {
-              console.log('🧹 Force cleanup (delayed)');
-              window._cleanupPolarCheckout();
-            }
-          }, 500);
-          
-          // ✅ FIX: result.user'dan fresh data kullan (React state'ten değil!)
-          const freshUser = result.user;
-          
-          console.log('👤 Fresh user data from polling:');
-          console.log('   Email:', freshUser?.email || 'N/A');
-          console.log('   Anonymous:', freshUser?.is_anonymous);
-          console.log('   Credits:', freshUser?.credits);
-          
-          // ✅ FIX: Double-check ile backend'den bir kez daha çek
-          console.log('🔄 Double-checking user status from API...');
-          
-          let finalUserCheck = freshUser;
-          
-          try {
-            const userResponse = await fetch(`${API_URL}/api/auth/user/${user.id}`);
-            const userData = await userResponse.json();
-            
-            if (userData.success && userData.user) {
-              finalUserCheck = userData.user;
-              console.log('✅ Final user check:');
-              console.log('   Email:', finalUserCheck.email || 'N/A');
-              console.log('   Anonymous:', finalUserCheck.is_anonymous);
-            }
-          } catch (error) {
-            console.error('⚠️ Final check failed:', error);
+        }, 500);
+        
+        // ✅ FIX: TRIPLE CHECK - 3 kez API call yap
+        console.log('🔄 Triple-checking user state...');
+        
+        let finalUser = result.user;
+        
+        // API Call #1
+        try {
+          console.log('🔄 API Check #1...');
+          const check1 = await fetch(`${API_URL}/api/auth/user/${user.id}`);
+          const data1 = await check1.json();
+          if (data1.success && data1.user) {
+            finalUser = data1.user;
+            console.log('✅ Check #1:', {
+              email: data1.user.email,
+              isAnonymous: data1.user.is_anonymous,
+              credits: data1.user.credits
+            });
           }
-          
-          // ✅ FIX: UserContext'i de güncelle (force)
-          await refreshUser();
-          await new Promise(resolve => setTimeout(resolve, 800)); // ✅ Daha uzun bekle
-          
-          // ✅ KARAR: Fresh data'ya göre
-          const isStillAnonymous = finalUserCheck?.is_anonymous ?? true;
-          
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          console.log('🎯 FINAL DECISION:');
-          console.log('   Is Anonymous:', isStillAnonymous);
-          console.log('   Action:', isStillAnonymous ? 'Show soft prompt' : 'Close modal');
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          
-          setTimeout(() => {
-            if (isStillAnonymous) {
-              console.log('💡 Showing soft prompt');
-              setShowSoftPrompt(true);
-            } else {
-              console.log('🎉 User authenticated, closing modal');
-              handleModalClose();
-            }
-          }, 500);
+        } catch (error) {
+          console.error('⚠️ Check #1 failed:', error);
         }
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // API Call #2
+        try {
+          console.log('🔄 API Check #2...');
+          const check2 = await fetch(`${API_URL}/api/auth/user/${user.id}`);
+          const data2 = await check2.json();
+          if (data2.success && data2.user) {
+            finalUser = data2.user;
+            console.log('✅ Check #2:', {
+              email: data2.user.email,
+              isAnonymous: data2.user.is_anonymous,
+              credits: data2.user.credits
+            });
+          }
+        } catch (error) {
+          console.error('⚠️ Check #2 failed:', error);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // API Call #3
+        try {
+          console.log('🔄 API Check #3...');
+          const check3 = await fetch(`${API_URL}/api/auth/user/${user.id}`);
+          const data3 = await check3.json();
+          if (data3.success && data3.user) {
+            finalUser = data3.user;
+            console.log('✅ Check #3:', {
+              email: data3.user.email,
+              isAnonymous: data3.user.is_anonymous,
+              credits: data3.user.credits
+            });
+          }
+        } catch (error) {
+          console.error('⚠️ Check #3 failed:', error);
+        }
+        
+        // ✅ FIX: Force UserContext update
+        console.log('🔄 Force updating UserContext...');
+        await refreshUser();
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        await refreshUser(); // ✅ 2. kez
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        // ✅ KARAR: Final user data'ya göre
+        const isStillAnonymous = finalUser?.is_anonymous ?? true;
+        
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🎯 FINAL DECISION:');
+        console.log('   Email:', finalUser?.email);
+        console.log('   Is Anonymous:', isStillAnonymous);
+        console.log('   Credits:', finalUser?.credits);
+        console.log('   Action:', isStillAnonymous ? 'Show soft prompt' : 'Close modal');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        setTimeout(() => {
+          if (isStillAnonymous) {
+            console.log('💡 Showing soft prompt');
+            setShowSoftPrompt(true);
+          } else {
+            console.log('🎉 User authenticated, closing modal');
+            handleModalClose();
+          }
+        }, 500);
       }
+    }
 
-      if (pollCount >= maxPolls) {
-        console.log('⏱️ Max polling reached, stopping...');
-        stopCreditsPolling();
-      }
-    }, 3000);
-  };
+    if (pollCount >= maxPolls) {
+      console.log('⏱️ Max polling reached, stopping...');
+      stopCreditsPolling();
+    }
+  }, 3000);
+};
 
   // ✅ Polling durdur
   const stopCreditsPolling = () => {

@@ -11,7 +11,7 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
   // ✅ Soft prompt states
   const [showSoftPrompt, setShowSoftPrompt] = useState(false);
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState(''); // ✅ YENİ: Optional password
+  const [password, setPassword] = useState('');
   const [isSavingAccount, setIsSavingAccount] = useState(false);
   const [saveAccountError, setSaveAccountError] = useState(null);
   
@@ -65,7 +65,7 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
       stopCreditsPolling();
       setShowSoftPrompt(false);
       setEmail('');
-      setPassword(''); // ✅ Reset password
+      setPassword('');
       setSaveAccountError(null);
       
       setTimeout(() => {
@@ -90,7 +90,7 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
     }
   }, [isOpen, user]);
 
-  // ✅ Credits polling with AGGRESSIVE cleanup
+  // ✅ FIX: AGGRESSIVE credits polling with full user state refresh
   const startCreditsPolling = () => {
     console.log('🔄 Starting credits polling...');
     
@@ -101,7 +101,7 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
       pollCount++;
       console.log(`📊 Polling credits... (${pollCount}/${maxPolls})`);
 
-      const result = await refreshCredits();
+      const result = await refreshCredits(); // ✅ Bu artık user data'yı da döndürüyor
 
       if (result.success && result.credits !== null) {
         if (result.credits > initialCreditsRef.current) {
@@ -128,32 +128,52 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
             }
           }, 500);
           
-          // ✅ User data refresh
-          console.log('🔄 Refreshing user data...');
-          await refreshUser();
-          await new Promise(resolve => setTimeout(resolve, 500));
+          // ✅ FIX: result.user'dan fresh data kullan (React state'ten değil!)
+          const freshUser = result.user;
           
-          // ✅ Fresh user check from API
-          let isStillAnonymous = user?.is_anonymous;
+          console.log('👤 Fresh user data from polling:');
+          console.log('   Email:', freshUser?.email || 'N/A');
+          console.log('   Anonymous:', freshUser?.is_anonymous);
+          console.log('   Credits:', freshUser?.credits);
+          
+          // ✅ FIX: Double-check ile backend'den bir kez daha çek
+          console.log('🔄 Double-checking user status from API...');
+          
+          let finalUserCheck = freshUser;
           
           try {
             const userResponse = await fetch(`${API_URL}/api/auth/user/${user.id}`);
             const userData = await userResponse.json();
             
             if (userData.success && userData.user) {
-              isStillAnonymous = userData.user.is_anonymous;
-              console.log('👤 Fresh user data:', userData.user.email ? 'Has email' : 'No email', '| Anonymous:', isStillAnonymous);
+              finalUserCheck = userData.user;
+              console.log('✅ Final user check:');
+              console.log('   Email:', finalUserCheck.email || 'N/A');
+              console.log('   Anonymous:', finalUserCheck.is_anonymous);
             }
           } catch (error) {
-            console.error('⚠️ Failed to fetch fresh user data:', error);
+            console.error('⚠️ Final check failed:', error);
           }
+          
+          // ✅ FIX: UserContext'i de güncelle (force)
+          await refreshUser();
+          await new Promise(resolve => setTimeout(resolve, 800)); // ✅ Daha uzun bekle
+          
+          // ✅ KARAR: Fresh data'ya göre
+          const isStillAnonymous = finalUserCheck?.is_anonymous ?? true;
+          
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log('🎯 FINAL DECISION:');
+          console.log('   Is Anonymous:', isStillAnonymous);
+          console.log('   Action:', isStillAnonymous ? 'Show soft prompt' : 'Close modal');
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           
           setTimeout(() => {
             if (isStillAnonymous) {
-              console.log('💡 Showing soft prompt for anonymous user');
+              console.log('💡 Showing soft prompt');
               setShowSoftPrompt(true);
             } else {
-              console.log('🎉 User is authenticated, closing modal');
+              console.log('🎉 User authenticated, closing modal');
               handleModalClose();
             }
           }, 500);
@@ -201,14 +221,13 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
     onClose();
   };
 
-  // ✅ YENİ: Save account handler (with optional password)
+  // ✅ Save account handler
   const handleSaveAccount = async () => {
     if (!email || !email.includes('@')) {
       setSaveAccountError('Please enter a valid email');
       return;
     }
 
-    // ✅ Password validation (eğer girilmişse)
     if (password && password.length < 6) {
       setSaveAccountError('Password must be at least 6 characters');
       return;
@@ -227,7 +246,7 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
-          password: password || null, // ✅ Optional password
+          password: password || null,
           anonymousUserId: user.id
         })
       });
@@ -238,7 +257,6 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
         console.log('✅ Account saved successfully');
         console.log('   Has password:', data.hasPassword ? 'Yes' : 'No');
         
-        // ✅ User bilgisini refresh et
         console.log('🔄 Refreshing user data...');
         await refreshUser();
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -345,12 +363,11 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
 
   return (
     <>
-      {/* ✅ YENİ: Soft Prompt Modal (with optional password) */}
+      {/* ✅ Soft Prompt Modal */}
       {showSoftPrompt && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 sm:p-8">
             
-            {/* Success Icon */}
             <div className="flex justify-center mb-4">
               <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -359,7 +376,6 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
               </div>
             </div>
 
-            {/* Title */}
             <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
               🎉 Credits Added!
             </h3>
@@ -368,7 +384,6 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
               Secure your account (optional)
             </p>
 
-            {/* Email Input */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Email Address
@@ -389,7 +404,6 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
               </div>
             </div>
 
-            {/* ✅ YENİ: Password Input (OPTIONAL) */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Password (optional)
@@ -419,7 +433,6 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
               </p>
             )}
 
-            {/* Save Button */}
             <button
               onClick={handleSaveAccount}
               disabled={isSavingAccount || !email}
@@ -435,7 +448,6 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
               )}
             </button>
 
-            {/* Maybe Later */}
             <button
               onClick={async () => {
                 console.log('⏭️ User clicked "Maybe later"');
@@ -454,7 +466,6 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
               Maybe later
             </button>
 
-            {/* Info Text */}
             <p className="text-xs text-gray-500 text-center mt-4">
               {password 
                 ? 'Create account with password for easy login' 
@@ -464,11 +475,10 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
         </div>
       )}
 
-      {/* Main Paywall Modal - AYNI KALIYOR */}
+      {/* Main Paywall Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
         <div className="relative w-full max-w-6xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl">
           
-          {/* Close Button */}
           <button
             onClick={handleModalClose}
             disabled={isLoading || refreshing}
@@ -478,7 +488,6 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
             <X className="w-5 h-5 text-gray-600" />
           </button>
 
-          {/* Header */}
           <div className="text-center px-6 sm:px-8 pt-12 pb-8 bg-gradient-to-br from-purple-600 to-blue-600 text-white">
             <h2 className="text-3xl sm:text-4xl font-bold mb-3">
               {getTitle()}
@@ -505,7 +514,6 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
             )}
           </div>
 
-          {/* Pricing Cards - AYNI KALIYOR */}
           <div className="p-4 sm:p-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
               {PRICING_PLANS.map((plan) => (
@@ -577,7 +585,6 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
               ))}
             </div>
 
-            {/* Purchase Button */}
             <div className="mt-6 sm:mt-8 text-center">
               <button
                 onClick={() => {
@@ -611,7 +618,6 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
               </div>
             )}
 
-            {/* Trust Badges */}
             <div className="mt-6 sm:mt-8 flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-gray-500">
               <div className="flex items-center">
                 <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -636,7 +642,6 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
         </div>
       </div>
 
-      {/* Loading Overlay */}
       {isLoading && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="bg-white rounded-2xl p-6 sm:p-8 text-center max-w-sm mx-4 shadow-2xl">

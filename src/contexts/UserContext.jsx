@@ -346,12 +346,12 @@ export function UserProvider({ children }) {
   };
 
   /**
-   * ✅ Credits'i güncelle ve yeni credits değerini DÖNDÜR
+   * ✅ FIX: Credits'i güncelle ve FRESH user data döndür
    */
   const refreshCredits = async () => {
     if (!user?.id) {
       console.warn('⚠️ No user ID, cannot refresh credits');
-      return { success: false, credits: null };
+      return { success: false, credits: null, user: null };
     }
 
     console.log('🔄 Refreshing user credits...');
@@ -371,32 +371,36 @@ export function UserProvider({ children }) {
         throw new Error(result.error || 'Failed to fetch user');
       }
 
-      const data = result.user;
+      const freshUserData = result.user;
 
-      if (data && data.credits !== undefined) {
-        console.log('✅ Credits refreshed successfully');
-        console.log(`   Old: ${user.credits} → New: ${data.credits}`);
+      if (freshUserData && freshUserData.credits !== undefined) {
+        console.log('✅ User data refreshed successfully');
+        console.log(`   Credits: ${user.credits} → ${freshUserData.credits}`);
+        console.log(`   Email: ${freshUserData.email || 'N/A'}`);
+        console.log(`   Anonymous: ${freshUserData.is_anonymous}`);
         
+        // ✅ FIX: Tüm user object'i güncelle
         const updatedUser = {
           ...user,
-          credits: data.credits,
-          email: data.email || user.email, // ✅ Email'i de güncelle
-          is_anonymous: data.is_anonymous, // ✅ Anonymous status'u da güncelle
-          last_payment_at: data.last_payment_at || user.last_payment_at,
-          updated_at: data.updated_at || new Date().toISOString()
+          ...freshUserData,
+          updated_at: new Date().toISOString()
         };
         
         setUser(updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));
         
-        return { success: true, credits: data.credits };
+        return { 
+          success: true, 
+          credits: freshUserData.credits,
+          user: updatedUser
+        };
       } else {
-        console.warn('⚠️ No credits data in response');
-        return { success: false, credits: null };
+        console.warn('⚠️ No user data in response');
+        return { success: false, credits: null, user: null };
       }
     } catch (error) {
       console.error('❌ Failed to refresh credits:', error.message);
-      return { success: false, credits: null };
+      return { success: false, credits: null, user: null };
     } finally {
       setRefreshing(false);
     }
@@ -492,8 +496,6 @@ export function UserProvider({ children }) {
     hasFreeTrial: user ? user.free_trials_used < user.free_trials_limit : false,
     hasCredits: user ? user.credits > 0 : false,
     isAnonymous: user ? user.is_anonymous : true,
-    
-    // ✅ FIX: Session olmadan da authenticated olabilir (webhook auto-migrate)
     isAuthenticated: !!(user && !user.is_anonymous && user.email)
   };
 

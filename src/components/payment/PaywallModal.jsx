@@ -90,7 +90,6 @@ export default function PaywallModal({ isOpen, onClose, reason = 'no_credits' })
     }
   }, [isOpen, user]);
 
- // ✅ FIX: Credits polling'de TRIPLE CHECK
 const startCreditsPolling = () => {
   console.log('🔄 Starting credits polling...');
   
@@ -110,112 +109,30 @@ const startCreditsPolling = () => {
         
         stopCreditsPolling();
         
-        // ✅ AGGRESSIVE POLAR CLEANUP
-        console.log('🧹 Cleaning up Polar checkout...');
+        // Polar cleanup
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🧹 AGGRESSIVE POLAR CLEANUP');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
         if (window._closePolarCheckout) {
           window._closePolarCheckout();
         }
-        
         if (window._cleanupPolarCheckout) {
           window._cleanupPolarCheckout();
         }
         
-        setTimeout(() => {
-          if (window._cleanupPolarCheckout) {
-            console.log('🧹 Force cleanup (delayed)');
-            window._cleanupPolarCheckout();
-          }
-        }, 500);
-        
-        // ✅ FIX: TRIPLE CHECK - 3 kez API call yap
-        console.log('🔄 Triple-checking user state...');
-        
-        let finalUser = result.user;
-        
-        // API Call #1
-        try {
-          console.log('🔄 API Check #1...');
-          const check1 = await fetch(`${API_URL}/api/auth/user/${user.id}`);
-          const data1 = await check1.json();
-          if (data1.success && data1.user) {
-            finalUser = data1.user;
-            console.log('✅ Check #1:', {
-              email: data1.user.email,
-              isAnonymous: data1.user.is_anonymous,
-              credits: data1.user.credits
-            });
-          }
-        } catch (error) {
-          console.error('⚠️ Check #1 failed:', error);
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // API Call #2
-        try {
-          console.log('🔄 API Check #2...');
-          const check2 = await fetch(`${API_URL}/api/auth/user/${user.id}`);
-          const data2 = await check2.json();
-          if (data2.success && data2.user) {
-            finalUser = data2.user;
-            console.log('✅ Check #2:', {
-              email: data2.user.email,
-              isAnonymous: data2.user.is_anonymous,
-              credits: data2.user.credits
-            });
-          }
-        } catch (error) {
-          console.error('⚠️ Check #2 failed:', error);
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // API Call #3
-        try {
-          console.log('🔄 API Check #3...');
-          const check3 = await fetch(`${API_URL}/api/auth/user/${user.id}`);
-          const data3 = await check3.json();
-          if (data3.success && data3.user) {
-            finalUser = data3.user;
-            console.log('✅ Check #3:', {
-              email: data3.user.email,
-              isAnonymous: data3.user.is_anonymous,
-              credits: data3.user.credits
-            });
-          }
-        } catch (error) {
-          console.error('⚠️ Check #3 failed:', error);
-        }
-        
-        // ✅ FIX: Force UserContext update
-        console.log('🔄 Force updating UserContext...');
-        await refreshUser();
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        await refreshUser(); // ✅ 2. kez
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // ✅ KARAR: Final user data'ya göre
-        const isStillAnonymous = finalUser?.is_anonymous ?? true;
-        
+        // ✅ FORCE RELOAD (en basit ve garantili çözüm!)
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('🎯 FINAL DECISION:');
-        console.log('   Email:', finalUser?.email);
-        console.log('   Is Anonymous:', isStillAnonymous);
-        console.log('   Credits:', finalUser?.credits);
-        console.log('   Action:', isStillAnonymous ? 'Show soft prompt' : 'Close modal');
+        console.log('🎉 PAYMENT SUCCESSFUL!');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log(`   Credits added: ${result.credits}`);
+        console.log('   Reloading page in 1 second...');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
         setTimeout(() => {
-          if (isStillAnonymous) {
-            console.log('💡 Showing soft prompt');
-            setShowSoftPrompt(true);
-          } else {
-            console.log('🎉 User authenticated, closing modal');
-            handleModalClose();
-          }
-        }, 500);
+          console.log('🔄 Reloading page...');
+          window.location.reload();
+        }, 1000);
       }
     }
 
